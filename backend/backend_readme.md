@@ -36,7 +36,7 @@ routers/
 ```
 
 ### `services/` - External API integrations and business logic
-- `services/gemini.py` - All code that talks to Gemini API
+- `services/openrouter.py` - All code that talks to OpenRouter API (using Gemini model)
 - `services/elevenlabs.py` - All code that talks to ElevenLabs API
 - `services/supabase.py` - All database operations
 - Separates "how to call external APIs" from "what endpoints to expose"
@@ -44,9 +44,9 @@ routers/
 
 **Example:**
 ```python
-# services/gemini.py
+# services/openrouter.py
 async def evaluate_answer(transcript: str, question: str):
-    # Call Gemini API
+    # Call OpenRouter API with Gemini model
     # Return score and feedback
 ```
 
@@ -76,8 +76,8 @@ Create a `.env` file in the backend directory with:
 SUPABASE_URL=your_url_here
 SUPABASE_KEY=your_key_here
 
-# AI Evaluation
-GEMINI_API_KEY=your_key_here
+# AI Evaluation (via OpenRouter)
+OPENROUTER_API_KEY=your_key_here
 
 # Text-to-Speech
 ELEVENLABS_API_KEY=your_key_here
@@ -115,7 +115,7 @@ uvicorn main:app --reload
 ## Development Workflow
 
 1. **Start simple** - Get basic FastAPI app running in `main.py`
-2. **Add services** - Create Gemini and ElevenLabs integrations
+2. **Add services** - Create OpenRouter (Gemini model) and ElevenLabs integrations
 3. **Create routers** - Split endpoints into organized files
 4. **Add models** - Define data validation as you build endpoints
 5. **Test** - Use FastAPI's auto-generated docs at `/docs` to test endpoints
@@ -137,7 +137,9 @@ uvicorn main:app --reload
 ### 2025-11-15
 - Initial setup: virtual environment, dependencies installed
 - Created backend_readme.md for documentation
-- Next: Create main.py with basic FastAPI app
+- Created main.py with basic FastAPI app (health check endpoints)
+- Decision: Using OpenRouter API to access Gemini models instead of direct Gemini API
+- Next: Set up .env file and create OpenRouter + ElevenLabs integrations
 
 ---
 

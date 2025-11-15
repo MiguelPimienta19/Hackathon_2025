@@ -1,5 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env.local in project root
+load_dotenv("../.env.local")
 
 # Create FastAPI app
 app = FastAPI(
@@ -37,4 +42,14 @@ def test_endpoint():
             "POST /api/voice-answer (coming soon)",
             "GET /api/questions (coming soon)"
         ]
+    }
+
+# Test endpoint to verify environment variables are loaded
+@app.get("/api/env-test")
+def env_test():
+    return {
+        "openrouter_key_loaded": bool(os.getenv("OPENROUTER_API_KEY")),
+        "elevenlabs_key_loaded": bool(os.getenv("ELEVENLABS_API_KEY")),
+        "supabase_url_loaded": bool(os.getenv("SUPABASE_URL")),
+        "message": "Environment variables loaded successfully!" if os.getenv("OPENROUTER_API_KEY") else "Environment variables NOT loaded"
     }
