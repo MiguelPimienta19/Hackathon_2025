@@ -122,6 +122,7 @@ We're building a **Duolingo-style mobile app** for technical interview practice 
 - **Why we use it:** Make HTTP requests to external APIs
 - **Our use case:** Call Gemini API, call ElevenLabs API from our backend
 
+
 ### **Supabase Python Client**
 - **What it is:** Python library to interact with Supabase
 - **Why we use it:** Database queries, authentication from backend
