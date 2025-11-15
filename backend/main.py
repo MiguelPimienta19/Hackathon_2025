@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+from services.openrouter import test_openrouter_connection
 
 # Load environment variables from .env.local in project root
 load_dotenv("../.env.local")
@@ -53,3 +54,10 @@ def env_test():
         "supabase_url_loaded": bool(os.getenv("SUPABASE_URL")),
         "message": "Environment variables loaded successfully!" if os.getenv("OPENROUTER_API_KEY") else "Environment variables NOT loaded"
     }
+
+# Test OpenRouter connection
+@app.get("/api/test-openrouter")
+async def test_openrouter():
+    """Test if OpenRouter API (Gemini) is working"""
+    result = await test_openrouter_connection()
+    return result
