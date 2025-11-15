@@ -1,0 +1,442 @@
+🧠 High-Level Concept (Still Simple)
+We’re building a Duolingo-style mobile app for technical interviews:
+Short daily lessons (5–10 minutes).
+
+
+Mix of:
+
+
+Multiple-choice questions (concepts, Big-O, DS/Algo fundamentals).
+
+
+Code-reading / bug-spotting questions.
+
+
+Voice questions where users explain their approach out loud (mock interview style).
+
+
+An AI coach:
+
+
+Listens to their explanation.
+
+
+Uses Gemini to evaluate it.
+
+
+Uses ElevenLabs to speak the feedback back to the user.
+
+
+That’s the “wow” moment: you talk through a solution, and an AI interviewer talks back.
+
+🏗 System Architecture (Technical Overview)
+Components
+Mobile client – React Native + Expo (TypeScript)
+
+
+Renders lessons, records audio, plays feedback audio.
+
+
+Talks to the backend via HTTPS (JSON + audio).
+
+
+Backend API – FastAPI (Python)
+
+
+Single API gateway for the mobile app.
+
+
+Handles:
+
+
+Auth (lightweight)
+
+
+Question fetching
+
+
+Session logging
+
+
+Integration with Gemini & ElevenLabs
+
+
+Integration with Supabase and (optionally) Snowflake.
+
+
+Supabase (Postgres + Auth)
+
+
+Stores question bank.
+
+
+Stores per-user sessions & progress.
+
+
+Gemini API
+
+
+Evaluates user’s spoken explanation (via text transcript).
+
+
+Produces feedback text & a numeric score.
+
+
+ElevenLabs API
+
+
+Converts feedback text → audio clip in a consistent “coach” voice.
+
+
+(Optional) Snowflake
+
+
+Mirror anonymized session/answer data for analytics/prize category.
+
+
+
+🔁 Key Flow: Voice Question End-to-End
+Scenario: “Explain how you’d solve two-sum in O(n) time.”
+Client (React Native)
+
+
+Shows VoiceQuestionScreen.
+
+
+Uses Expo AV to record audio (.m4a or .wav).
+
+
+Sends POST /api/voice-answer with:
+
+
+question_id
+
+
+Raw audio (binary or base64)
+
+
+User/session identifiers.
+
+
+FastAPI backend
+
+
+Receives audio file.
+
+
+Option A (if you use external STT): send audio → STT service → get transcript.
+
+
+Option B (if Gemini model supports audio): send audio directly to Gemini.
+
+
+Constructs a prompt:
+
+
+Includes:
+
+
+Question text
+
+
+Ideal reference answer
+
+
+Transcript text
+
+
+Asks Gemini to:
+
+
+Score (0–5)
+
+
+Identify missing pieces
+
+
+Output feedback_text.
+
+
+FastAPI → Gemini
+
+
+Calls Gemini generateContent (or equivalent API) with system + user prompts.
+
+
+Parses model response into a structured payload:
+
+ {
+  "score": 4,
+  "feedback_text": "You correctly described the hash map idea, but didn't mention what happens with duplicates and didn't explicitly state O(n) time."
+}
+
+
+FastAPI → ElevenLabs
+
+
+Sends feedback_text to ElevenLabs TTS API with a configured voice ID.
+
+
+Gets back:
+
+
+Either a URL to the audio file
+
+
+Or raw audio bytes.
+
+
+FastAPI → Supabase
+
+
+Logs:
+
+
+user_id
+
+
+question_id
+
+
+score
+
+
+transcript (optional)
+
+
+any other metadata.
+
+
+This feeds progress tracking + analytics.
+
+
+FastAPI → Client Response
+
+
+Returns JSON like:
+
+ {
+  "score": 4,
+  "feedback_text": "You correctly described the hash map idea...",
+  "audio_url": "https://.../coach_feedback_123.m4a"
+}
+
+
+Client
+
+
+Displays textual feedback + a score bar.
+
+
+Uses expo-av to stream/play the audio_url (or audio bytes).
+
+
+Updates local XP/streak (optimistically) and then syncs with backend.
+
+
+That entire pipeline is where you show off Best use of Gemini, Best Use of ElevenLabs, and Best Use of Gen AI.
+
+📦 Data Model (Technical Details)
+Supabase – Database Tables
+questions
+id            uuid PK
+track         text        -- 'ds', 'algo', 'system', 'behavioral'
+difficulty    text        -- 'easy', 'medium', 'hard'
+type          text        -- 'mcq', 'code', 'voice'
+prompt        text
+options       jsonb       -- ['O(1)', 'O(n)', ...] for MCQ
+correct_index int         -- index into options
+code_snippet  text        -- nullable
+ideal_answer  text        -- reference explanation for Gemini
+explanation   text        -- explanation shown to user on review
+
+profiles
+id          uuid PK references auth.users
+username    text
+main_lang   text    -- 'python', 'java', etc.
+
+sessions
+id            uuid PK
+user_id       uuid references profiles(id)
+created_at    timestamptz
+track         text
+xp_earned     int
+correct_count int
+total_count   int
+
+answers (for analytics)
+id           uuid PK
+user_id      uuid references profiles(id)
+question_id  uuid references questions(id)
+is_correct   bool
+score        int       -- for voice answers
+raw_answer   jsonb     -- transcript or selected_index
+created_at   timestamptz
+
+
+📱 Mobile App Architecture (React Native + Expo)
+Stack:
+React Native + Expo
+
+
+TypeScript
+
+
+@react-navigation/native + stack navigator
+
+
+Zustand or React Context for global state
+
+
+@react-native-async-storage/async-storage for local persistence
+
+
+expo-av for audio record/playback
+
+
+nativewind for Tailwind-style styling (if you want utility classes)
+
+
+Main Screens:
+OnboardingScreen – collect main_lang + goals, store in Supabase & local.
+
+
+HomeScreen – show streak, XP, tracks.
+
+
+LessonScreen – orchestrates list of questions in a session.
+
+
+Renders MCQCard, CodeQuestionCard, VoiceQuestionCard.
+
+
+VoiceQuestionScreen – handles record → send to backend → display/ play feedback.
+
+
+SummaryScreen – XP gained, accuracy, breakdown by type.
+
+
+ProfileScreen – streak, badges, charts (from Supabase).
+
+
+TypeScript Types:
+type QuestionType = 'mcq' | 'code' | 'voice';
+
+interface Question {
+  id: string;
+  track: 'ds' | 'algo' | 'system' | 'behavioral';
+  difficulty: 'easy' | 'medium' | 'hard';
+  type: QuestionType;
+  prompt: string;
+  options?: string[];
+  correctIndex?: number;
+  codeSnippet?: string;
+  idealAnswer: string;
+  explanation: string;
+}
+
+interface LessonState {
+  questions: Question[];
+  currentIndex: number;
+  correctCount: number;
+  totalCount: number;
+}
+
+
+🌐 Backend Architecture (FastAPI)
+Stack:
+FastAPI
+
+
+Python 3.11+
+
+
+httpx or requests for external API calls
+
+
+supabase-py or direct @supabase/supabase-js from backend if needed
+
+
+Optional: uvicorn for serving
+
+
+FastAPI Structure:
+main.py
+
+
+mounts routers: auth, questions, sessions, voice
+
+
+routers/questions.py
+
+
+GET /api/lesson → fetch questions from Supabase.
+
+
+routers/voice.py
+
+
+POST /api/voice-answer → the full Gemini + ElevenLabs pipeline.
+
+
+routers/sessions.py
+
+
+POST /api/session → log session result (XP, counts).
+
+
+GET /api/profile → aggregate stats for profile view.
+
+
+Pseudo-code for /api/voice-answer:
+@router.post("/voice-answer")
+async def voice_answer(payload: VoiceAnswerPayload):
+    # 1. Fetch question + ideal answer from Supabase
+    question = get_question_by_id(payload.question_id)
+
+    # 2. Get transcript from audio
+    transcript = await speech_to_text(payload.audio_bytes)
+
+    # 3. Call Gemini for evaluation
+    score, feedback_text = await call_gemini(
+        question_prompt=question.prompt,
+        ideal_answer=question.ideal_answer,
+        user_answer=transcript,
+    )
+
+    # 4. Call ElevenLabs for TTS
+    audio_url = await elevenlabs_tts(feedback_text)
+
+    # 5. Log answer in Supabase
+    log_voice_answer(
+        user_id=payload.user_id,
+        question_id=payload.question_id,
+        score=score,
+        transcript=transcript
+    )
+
+    # 6. Return to client
+    return {
+        "score": score,
+        "feedback_text": feedback_text,
+        "audio_url": audio_url,
+    }
+
+
+🎨 Tailwind / Bootstrap Clarification
+React Native app:
+
+
+Tailwind CSS (web) ❌
+
+
+Bootstrap ❌
+
+
+NativeWind (Tailwind-style for RN) ✅ if you want utility classes.
+
+
+FastAPI backend:
+
+
+You only need CSS frameworks if you build a separate admin / web UI, not for the API.
