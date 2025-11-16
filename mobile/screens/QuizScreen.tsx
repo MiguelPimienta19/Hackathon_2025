@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { apiService, Question } from '../services/api';
 
 const { height, width } = Dimensions.get('window');
@@ -67,6 +68,9 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
 
   const handleSelectAnswer = (option: AnswerOption) => {
     if (!submitted) {
+      // Haptic feedback
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
       setSelectedAnswer(option);
       // Animate button press
       Animated.sequence([
@@ -87,6 +91,9 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
   const handleSubmit = async () => {
     if (!selectedAnswer) return;
 
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     try {
       const currentQuestion = questions[currentIndex];
       const result = await apiService.checkAnswer(currentQuestion.id, selectedAnswer);
@@ -106,6 +113,9 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
+      // Haptic feedback
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
       setCurrentIndex(currentIndex + 1);
       setSelectedAnswer(null);
       setSubmitted(false);
