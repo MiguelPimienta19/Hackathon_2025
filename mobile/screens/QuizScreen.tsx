@@ -119,8 +119,15 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: '#000000' }]}>
-        <ActivityIndicator size="large" color="#00D4FF" />
-        <Text style={styles.loadingText}>Loading questions...</Text>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <View style={styles.loadingCard}>
+              <ActivityIndicator size="large" color="#007AFF" />
+              <Text style={styles.loadingText}>Loading questions...</Text>
+              <Text style={styles.loadingHint}>Preparing your quiz</Text>
+            </View>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
@@ -360,10 +367,34 @@ const styles = StyleSheet.create({
   },
 
   // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingCard: {
+    backgroundColor: '#1c1c1e',
+    borderRadius: 24,
+    padding: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   loadingText: {
-    marginTop: 16,
+    marginTop: 20,
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#ffffff',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  loadingHint: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#a1a1a6',
     fontWeight: '600',
     textAlign: 'center',
   },
