@@ -12,7 +12,11 @@ import { apiService, Question } from '../services/api';
 
 type AnswerOption = 'A' | 'B' | 'C' | 'D';
 
-export const QuizScreen: React.FC = () => {
+interface QuizScreenProps {
+  onGoBack: () => void;
+}
+
+export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -101,6 +105,9 @@ export const QuizScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          <TouchableOpacity onPress={onGoBack}>
+            <Text style={styles.backButton}>← Back</Text>
+          </TouchableOpacity>
           <Text style={styles.headerText}>
             Question {currentIndex + 1} / {questions.length}
           </Text>
@@ -187,7 +194,7 @@ export const QuizScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -224,12 +231,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
+  },
+  backButton: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
   },
   headerText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#ffffff',
   },
   scoreText: {
     fontSize: 16,

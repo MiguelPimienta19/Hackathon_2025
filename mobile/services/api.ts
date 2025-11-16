@@ -27,6 +27,21 @@ export interface CheckAnswerResponse {
   error?: string;
 }
 
+export interface EvaluateAnswerRequest {
+  question: string;
+  user_answer: string;
+  ideal_answer?: string;
+}
+
+export interface EvaluateAnswerResponse {
+  score: number;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
+  audio_base64: string;
+  audio_size_bytes: number;
+}
+
 export interface GetQuestionsParams {
   difficulty?: 'easy' | 'medium' | 'hard';
   topic?: string;
@@ -126,6 +141,31 @@ class ApiService {
     } catch (error) {
       console.error('Error testing connection:', error);
       return false;
+    }
+  }
+
+  /**
+   * Evaluate a user's answer to an open-ended question
+   */
+  async evaluateAnswer(request: EvaluateAnswerRequest): Promise<EvaluateAnswerResponse> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/evaluate-answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error evaluating answer:', error);
+      throw error;
     }
   }
 }
