@@ -13,7 +13,7 @@ class Question(BaseModel):
     correct_option: str  # "A", "B", "C", or "D"
     difficulty: str  # "easy", "medium", or "hard"
     topic: str
-    subtopic: str
+    subtopic: Optional[str] = None
 
     class Config:
         json_schema_extra = {
@@ -42,7 +42,7 @@ class QuestionResponse(BaseModel):
     option_d: str
     difficulty: str
     topic: str
-    subtopic: str
+    subtopic: Optional[str] = None
 
     class Config:
         json_schema_extra = {

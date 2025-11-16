@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
@@ -285,7 +285,8 @@ async def get_all_questions(
     difficulty: Optional[str] = None,
     topic: Optional[str] = None,
     subtopic: Optional[str] = None,
-    limit: Optional[int] = None
+    limit: Optional[int] = None,
+    randomize: bool = Query(True)
 ):
     """
     Fetch multiple choice questions with optional filters.
@@ -304,7 +305,8 @@ async def get_all_questions(
             difficulty=difficulty,
             topic=topic,
             subtopic=subtopic,
-            limit=limit
+            limit=limit,
+            randomize=randomize
         )
 
         # Remove correct_option from response for security

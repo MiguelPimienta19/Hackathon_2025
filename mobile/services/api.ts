@@ -46,6 +46,7 @@ export interface GetQuestionsParams {
   topic?: string;
   subtopic?: string;
   limit?: number;
+  randomize?: boolean;
 }
 
 class ApiService {
@@ -66,6 +67,7 @@ class ApiService {
       if (params?.topic) queryParams.append('topic', params.topic);
       if (params?.subtopic) queryParams.append('subtopic', params.subtopic);
       if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.randomize) queryParams.append('randomize', 'true');
 
       const url = `${this.baseUrl}/api/questions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 

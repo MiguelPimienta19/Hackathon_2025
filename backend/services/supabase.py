@@ -1,5 +1,7 @@
 import os
 from typing import List, Dict, Any, Optional
+import random
+import uuid
 from supabase import create_client
 
 # Supabase client initialization
@@ -26,7 +28,8 @@ async def get_questions(
     difficulty: Optional[str] = None,
     topic: Optional[str] = None,
     subtopic: Optional[str] = None,
-    limit: Optional[int] = None
+    limit: Optional[int] = None,
+    randomize: bool = False
 ) -> List[Dict[str, Any]]:
     """
     Fetch questions from Supabase with optional filters.
@@ -54,13 +57,35 @@ async def get_questions(
         if subtopic:
             query = query.eq("subtopic", subtopic)
 
-        if limit:
+        if not randomize and limit:
             query = query.limit(limit)
 
         # Execute query
         response = query.execute()
 
-        return response.data
+        questions = response.data or []
+        normalized: List[Dict[str, Any]] = []
+
+        for row in questions:
+            normalized.append({
+                'id': row.get('id') or str(uuid.uuid4()),
+                'question_text': row.get('question_text'),
+                'option_a': row.get('option_a') or row.get('option_a_text'),
+                'option_b': row.get('option_b') or row.get('option_b_text'),
+                'option_c': row.get('option_c') or row.get('option_c_text'),
+                'option_d': row.get('option_d') or row.get('option_d_text'),
+                'correct_option': row.get('correct_option'),
+                'difficulty': row.get('difficulty'),
+                'topic': row.get('topic'),
+                'subtopic': row.get('subtopic'),
+            })
+
+        if randomize:
+            random.shuffle(normalized)
+            if limit:
+                normalized = normalized[:limit]
+
+        return normalized
 
     except Exception as e:
         print(f"Error fetching questions from Supabase: {e}")
