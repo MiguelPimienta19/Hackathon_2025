@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { apiService, Question } from '../services/api';
 
 const { height, width } = Dimensions.get('window');
@@ -154,29 +155,42 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
             <Text style={styles.topicSubtitle}>Select one to start your quiz</Text>
 
             <View style={styles.topicGrid}>
-              {TOPICS.map((topic, index) => (
-                <TouchableOpacity
-                  key={topic}
-                  style={styles.topicCard}
-                  onPress={() => handleTopicSelect(topic)}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={
-                      index === 0 ? ['#8E2DE2', '#4A00E0'] :
-                      index === 1 ? ['#00D4FF', '#0099CC'] :
-                      index === 2 ? ['#FF6B6B', '#C92A2A'] :
-                      ['#58CC02', '#3D9A00']
-                    }
-                    style={styles.topicGradient}
+              {TOPICS.map((topic, index) => {
+                const iconName =
+                  index === 0 ? 'cog' :
+                  index === 1 ? 'laptop' :
+                  index === 2 ? 'brain' :
+                  'chart-bar';
+
+                const borderColor =
+                  index === 0 ? '#8E2DE2' :
+                  index === 1 ? '#00D4FF' :
+                  index === 2 ? '#FF6B6B' :
+                  '#58CC02';
+
+                const iconColor =
+                  index === 0 ? '#8E2DE2' :
+                  index === 1 ? '#00D4FF' :
+                  index === 2 ? '#FF6B6B' :
+                  '#58CC02';
+
+                return (
+                  <TouchableOpacity
+                    key={topic}
+                    style={[styles.topicCard, { borderColor }]}
+                    onPress={() => handleTopicSelect(topic)}
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.topicEmoji}>
-                      {index === 0 ? '⚙️' : index === 1 ? '💻' : index === 2 ? '🧠' : '📊'}
-                    </Text>
+                    <MaterialCommunityIcons
+                      name={iconName}
+                      size={36}
+                      color={iconColor}
+                      style={styles.topicIcon}
+                    />
                     <Text style={styles.topicText}>{topic}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         </SafeAreaView>
@@ -341,9 +355,20 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
             </TouchableOpacity>
           ) : (
             <View style={styles.finalScoreContainer}>
-              <Text style={styles.finalScoreEmoji}>
-                {score / questions.length >= 0.8 ? '🏆' : score / questions.length >= 0.6 ? '👏' : '📚'}
-              </Text>
+              <MaterialCommunityIcons
+                name={
+                  score / questions.length >= 0.8 ? 'trophy' :
+                  score / questions.length >= 0.6 ? 'hand-clap' :
+                  'book-open-variant'
+                }
+                size={48}
+                color={
+                  score / questions.length >= 0.8 ? '#FFD700' :
+                  score / questions.length >= 0.6 ? '#FFA500' :
+                  '#8E2DE2'
+                }
+                style={styles.finalScoreIcon}
+              />
               <Text style={styles.finalScoreTitle}>Quiz Complete!</Text>
               <Text style={styles.finalScoreText}>
                 You got {score} out of {questions.length} correct
@@ -684,8 +709,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     marginTop: 8,
   },
-  finalScoreEmoji: {
-    fontSize: 48,
+  finalScoreIcon: {
     marginBottom: 12,
   },
   finalScoreTitle: {
@@ -741,7 +765,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   backButtonText: {
     fontSize: 16,
@@ -749,45 +773,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   topicTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
     color: '#ffffff',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: -1,
   },
   topicSubtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
     fontWeight: '600',
   },
   topicGrid: {
-    gap: 16,
+    gap: 20,
   },
   topicCard: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  topicGradient: {
+    backgroundColor: '#1c1c1e',
     padding: 24,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 120,
   },
-  topicEmoji: {
-    fontSize: 48,
+  topicIcon: {
     marginBottom: 12,
   },
   topicText: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#ffffff',
     textAlign: 'center',
     lineHeight: 24,
