@@ -14,7 +14,7 @@ export const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({ onNavi
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Choose Your Mode</Text>
           <Text style={styles.subtitle}>Select how you want to practice</Text>
@@ -65,9 +65,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-  },
-  content: {
-    flex: 1,
   },
   scrollContent: {
     padding: 24,
