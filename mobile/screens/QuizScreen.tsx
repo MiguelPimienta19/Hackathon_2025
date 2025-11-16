@@ -162,30 +162,32 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
                   index === 2 ? 'brain' :
                   'chart-bar';
 
+                const borderColor =
+                  index === 0 ? '#8E2DE2' :
+                  index === 1 ? '#00D4FF' :
+                  index === 2 ? '#FF6B6B' :
+                  '#58CC02';
+
+                const iconColor =
+                  index === 0 ? '#8E2DE2' :
+                  index === 1 ? '#00D4FF' :
+                  index === 2 ? '#FF6B6B' :
+                  '#58CC02';
+
                 return (
                   <TouchableOpacity
                     key={topic}
-                    style={styles.topicCard}
+                    style={[styles.topicCard, { borderColor }]}
                     onPress={() => handleTopicSelect(topic)}
                     activeOpacity={0.8}
                   >
-                    <LinearGradient
-                      colors={
-                        index === 0 ? ['#8E2DE2', '#4A00E0'] :
-                        index === 1 ? ['#00D4FF', '#0099CC'] :
-                        index === 2 ? ['#FF6B6B', '#C92A2A'] :
-                        ['#58CC02', '#3D9A00']
-                      }
-                      style={styles.topicGradient}
-                    >
-                      <MaterialCommunityIcons
-                        name={iconName}
-                        size={36}
-                        color="#ffffff"
-                        style={styles.topicIcon}
-                      />
-                      <Text style={styles.topicText}>{topic}</Text>
-                    </LinearGradient>
+                    <MaterialCommunityIcons
+                      name={iconName}
+                      size={36}
+                      color={iconColor}
+                      style={styles.topicIcon}
+                    />
+                    <Text style={styles.topicText}>{topic}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -786,31 +788,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   topicGrid: {
-    gap: 12,
+    gap: 20,
   },
   topicCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  topicGradient: {
-    padding: 18,
+    backgroundColor: '#1c1c1e',
+    padding: 24,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 95,
+    minHeight: 120,
   },
   topicIcon: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
   topicText: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#ffffff',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 24,
   },
 });
