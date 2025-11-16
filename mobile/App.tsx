@@ -1,6 +1,6 @@
 import React from 'react';
-import { LandingScreen } from './screens/LandingScreen';
+import { QuizScreen } from './screens/QuizScreen';
 
 export default function App() {
-  return <LandingScreen />;
+  return <QuizScreen />;
 }
