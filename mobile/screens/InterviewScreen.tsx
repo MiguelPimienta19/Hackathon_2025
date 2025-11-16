@@ -349,6 +349,14 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
     return colors[index % colors.length];
   };
 
+  const getDifficultyColor = (difficulty: string) => {
+    const lower = difficulty?.toLowerCase();
+    if (lower === 'easy') return '#34C759';
+    if (lower === 'medium') return '#FFD60A';
+    if (lower === 'hard') return '#FF3B30';
+    return '#8E8E93';
+  };
+
   // Topic Selection Screen
   if (!selectedTopic) {
     return (
@@ -417,6 +425,11 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
 
         <View style={styles.questionCard}>
           <Text style={styles.questionLabel}>Interview Question</Text>
+          {currentQuestion?.difficulty && (
+            <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(currentQuestion.difficulty) }]}>
+              <Text style={styles.difficultyText}>{currentQuestion.difficulty.toUpperCase()}</Text>
+            </View>
+          )}
           <Text style={styles.questionText}>{currentQuestion?.prompt}</Text>
         </View>
 
@@ -610,6 +623,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  difficultyBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  difficultyText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
     letterSpacing: 1,
   },
   questionText: {

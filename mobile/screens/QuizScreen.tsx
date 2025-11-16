@@ -142,6 +142,14 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
     }
   };
 
+  const getDifficultyColor = (difficulty: string) => {
+    const lower = difficulty?.toLowerCase();
+    if (lower === 'easy') return '#34C759';
+    if (lower === 'medium') return '#FFD60A';
+    if (lower === 'hard') return '#FF3B30';
+    return '#8E8E93';
+  };
+
   // Topic Selection Screen
   if (!selectedTopic) {
     return (
@@ -272,6 +280,11 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
 
           {/* Question Card */}
           <View style={styles.questionCard}>
+            {question.difficulty && (
+              <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(question.difficulty) }]}>
+                <Text style={styles.difficultyText}>{question.difficulty.toUpperCase()}</Text>
+              </View>
+            )}
             <Text style={styles.questionText}>{question.question_text}</Text>
           </View>
 
@@ -558,6 +571,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
+  },
+  difficultyBadge: {
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  difficultyText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 1,
   },
   questionText: {
     fontSize: 18,
