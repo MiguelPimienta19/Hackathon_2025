@@ -22,10 +22,18 @@ interface QuizScreenProps {
   onGoBack: () => void;
 }
 
+const TOPICS = [
+  "Operating Systems & Concurrency",
+  "Programming Languages & Software Engineering",
+  "Memory, Pointers & Architecture",
+  "Data Structures & Algorithms"
+] as const;
+
 export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<AnswerOption | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -40,10 +48,6 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
   });
 
   useEffect(() => {
-    loadQuestions();
-  }, []);
-
-  useEffect(() => {
     if (questions.length > 0) {
       // Animate progress bar
       Animated.timing(progressAnim, {
@@ -54,16 +58,26 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
     }
   }, [currentIndex, questions.length]);
 
-  const loadQuestions = async () => {
+  const loadQuestions = async (topic: string) => {
     try {
       setLoading(true);
-      const data = await apiService.getQuestions({ limit: 10 });
+      const data = await apiService.getQuestions({
+        topic,
+        limit: 10,
+        randomize: true
+      });
       setQuestions(data);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load questions:', error);
       setLoading(false);
     }
+  };
+
+  const handleTopicSelect = (topic: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedTopic(topic);
+    loadQuestions(topic);
   };
 
   const handleSelectAnswer = (option: AnswerOption) => {
@@ -125,6 +139,50 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
       Object.values(scaleAnims).forEach((anim) => anim.setValue(1));
     }
   };
+
+  // Topic Selection Screen
+  if (!selectedTopic) {
+    return (
+      <View style={[styles.container, { backgroundColor: '#000000' }]}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.topicSelectionContainer}>
+            <TouchableOpacity onPress={onGoBack} style={styles.backButton}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.topicTitle}>Choose a Topic</Text>
+            <Text style={styles.topicSubtitle}>Select one to start your quiz</Text>
+
+            <View style={styles.topicGrid}>
+              {TOPICS.map((topic, index) => (
+                <TouchableOpacity
+                  key={topic}
+                  style={styles.topicCard}
+                  onPress={() => handleTopicSelect(topic)}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={
+                      index === 0 ? ['#8E2DE2', '#4A00E0'] :
+                      index === 1 ? ['#00D4FF', '#0099CC'] :
+                      index === 2 ? ['#FF6B6B', '#C92A2A'] :
+                      ['#58CC02', '#3D9A00']
+                    }
+                    style={styles.topicGradient}
+                  >
+                    <Text style={styles.topicEmoji}>
+                      {index === 0 ? '⚙️' : index === 1 ? '💻' : index === 2 ? '🧠' : '📊'}
+                    </Text>
+                    <Text style={styles.topicText}>{topic}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
@@ -669,5 +727,69 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+
+  // Topic Selection
+  topicSelectionContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginBottom: 24,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  topicTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -1,
+  },
+  topicSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginBottom: 40,
+    fontWeight: '600',
+  },
+  topicGrid: {
+    gap: 16,
+  },
+  topicCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  topicGradient: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 120,
+  },
+  topicEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  topicText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#ffffff',
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
