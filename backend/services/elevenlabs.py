@@ -11,7 +11,7 @@ def get_api_key():
 
 def get_voice_id():
     """Get voice ID from environment, or use default"""
-    return os.getenv("ELEVENLABS_VOICE_ID", "MzqUf1HbJ8UmQ0wUsx2p")  # Default: Rachel voice
+    return os.getenv("ELEVENLABS_VOICE_ID", "onwK4e9ZLuTAKqWW03F9")  # Default: Rachel voice
 
 
 def parse_float_env(key: str, default: float) -> float:

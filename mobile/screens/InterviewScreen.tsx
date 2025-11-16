@@ -347,19 +347,22 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
           <Text style={styles.questionText}>{currentQuestion.question}</Text>
         </View>
 
-        {!isRecording && !isSubmitting && !evaluation && (
-          <View style={styles.startPrompt}>
-            <Text style={styles.startPromptText}>
-              Read the question carefully, then tap below when you're ready to answer.
-            </Text>
-            <TouchableOpacity style={styles.startButton} onPress={startListening}>
-              <Text style={styles.startButtonText}>Start Answering</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {!evaluation ? (
           <>
+            {/* Primary Start Button - only show when not recording and not submitting */}
+            {!isRecording && !isSubmitting && (
+              <View style={styles.startPrompt}>
+                <Text style={styles.startPromptIcon}>🎤</Text>
+                <Text style={styles.startPromptTitle}>Voice Interview Mode</Text>
+                <Text style={styles.startPromptText}>
+                  Tap the button below to start recording your answer. You'll have up to 30 seconds to speak.
+                </Text>
+                <TouchableOpacity style={styles.startButton} onPress={startListening}>
+                  <Text style={styles.startButtonText}>🎙️ Start Recording</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Voice Listening Indicator */}
             {isRecording && (
               <View style={styles.listeningBanner}>
@@ -370,24 +373,6 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
                   onPress={stopRecording}
                 >
                   <Text style={styles.stopListeningText}>Stop & Submit</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Voice-only mode - no text box */}
-            {!isRecording && !isSubmitting && (
-              <View style={styles.voiceOnlyPrompt}>
-                <Text style={styles.voiceOnlyText}>
-                  🎤 Voice Interview Mode
-                </Text>
-                <Text style={styles.voiceOnlySubtext}>
-                  Speak your answer naturally. Tap "Stop & Submit" when you're done.
-                </Text>
-                <TouchableOpacity
-                  style={styles.restartButton}
-                  onPress={startListening}
-                >
-                  <Text style={styles.restartButtonText}>🔄 Start Over</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -503,26 +488,42 @@ const styles = StyleSheet.create({
   },
   startPrompt: {
     backgroundColor: '#1c1c1e',
-    padding: 18,
+    padding: 24,
     borderRadius: 16,
     marginBottom: 20,
     alignItems: 'center',
+  },
+  startPromptIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  startPromptTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 8,
   },
   startPromptText: {
     color: '#a1a1a6',
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 20,
+    lineHeight: 20,
   },
   startButton: {
     backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
     borderRadius: 12,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   startButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#ffffff',
   },
   answerSection: {
@@ -697,36 +698,6 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 14,
     fontWeight: '700',
-  },
-  voiceOnlyPrompt: {
-    backgroundColor: '#1c1c1e',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  voiceOnlyText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  voiceOnlySubtext: {
-    fontSize: 14,
-    color: '#a1a1a6',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  restartButton: {
-    backgroundColor: '#FFD60A',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  restartButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#000000',
   },
   processingCard: {
     backgroundColor: '#1c1c1e',
