@@ -182,9 +182,6 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
           const transcribeResponse = await fetch(`${API_BASE_URL}/api/transcribe-file`, {
             method: 'POST',
             body: formData,
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
           });
 
           if (!transcribeResponse.ok) {

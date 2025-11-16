@@ -1,12 +1,11 @@
 // API service for communicating with the backend
 
-// You can change this to your actual backend URL
-// For local testing:
-//   - iOS Simulator: http://localhost:8000
-//   - Android Emulator: http://10.0.2.2:8000
-//   - Physical iOS Device: http://10.108.65.189:8000
-// For production: your deployed backend URL
-export const API_BASE_URL = 'http://10.108.65.189:8000';
+// The default host points to your laptop's LAN IP so a phone on the same network can reach it.
+// If you ever want to override (e.g., simulators running against localhost), assign
+// `globalThis.__API_BASE_URL__` before this module runs.
+const fallbackBaseUrl = 'http://10.108.65.189:8000';
+const overrideBaseUrl = (globalThis as any).__API_BASE_URL__ as string | undefined;
+export const API_BASE_URL = overrideBaseUrl ?? fallbackBaseUrl;
 
 export interface Question {
   id: string;
