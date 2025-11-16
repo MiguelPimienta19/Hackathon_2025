@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiService, EvaluateAnswerResponse } from '../services/api';
+import { apiService, EvaluateAnswerResponse, API_BASE_URL } from '../services/api';
 import { Audio } from 'expo-av';
 
 interface InterviewScreenProps {
@@ -41,6 +41,8 @@ const INTERVIEW_QUESTIONS = [
   },
 ];
 
+const FEEDBACK_PLAYBACK_RATE = 1.15;
+
 export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
@@ -48,8 +50,223 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
   const [evaluation, setEvaluation] = useState<EvaluateAnswerResponse | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const silenceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const currentQuestion = INTERVIEW_QUESTIONS[currentQuestionIndex];
+  const stopPlayback = async () => {
+    if (sound) {
+      try {
+        await sound.stopAsync();
+      } catch (error) {
+        console.log('[Voice] stopAsync failed', error);
+      }
+      try {
+        await sound.unloadAsync();
+      } catch (error) {
+        console.log('[Voice] unloadAsync failed', error);
+      }
+      setIsPlayingAudio(false);
+      setSound(null);
+    }
+  };
+
+  // Request audio permissions and auto-start listening on mount
+  React.useEffect(() => {
+    (async () => {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (granted) {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+        // Permissions granted; user can manually start recording
+      }
+    })();
+
+    return () => {
+      // Cleanup on unmount
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const startListening = async () => {
+    if (isRecording || isSubmitting || evaluation) return;
+
+    try {
+      console.log('[Voice] Auto-starting voice listening...');
+      setIsListening(true);
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(newRecording);
+      setIsRecording(true);
+
+      // Auto-stop after 30 seconds (safety limit)
+      silenceTimerRef.current = setTimeout(() => {
+        console.log('[Voice] Auto-stopping after timeout');
+        stopRecording();
+      }, 30000); // 30 seconds max
+
+    } catch (error) {
+      console.error('[Voice] Failed to start listening:', error);
+      setIsListening(false);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) {
+        Alert.alert('Permission Required', 'Microphone permission is needed to record your answer.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(newRecording);
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      Alert.alert('Error', 'Failed to start recording. Please try again.');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    // Clear auto-stop timer
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+
+    try {
+      setIsRecording(false);
+      setIsListening(false);
+      setIsSubmitting(true);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+
+      if (uri) {
+        try {
+          console.log('[Voice] Audio URI:', uri);
+
+          // Send audio file directly using FormData (no deprecated APIs!)
+          const formData = new FormData();
+          formData.append('file', {
+            uri: uri,
+            type: 'audio/m4a',
+            name: 'recording.m4a',
+          } as any);
+
+          console.log('[Voice] Transcribing...');
+          const transcribeResponse = await fetch(`${API_BASE_URL}/api/transcribe-file`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          if (!transcribeResponse.ok) {
+            const errorText = await transcribeResponse.text();
+            console.error('[Voice] Transcription error:', errorText);
+            throw new Error('Transcription failed');
+          }
+
+          const { transcription } = await transcribeResponse.json();
+          console.log('[Voice] Transcription:', transcription);
+          setUserAnswer(transcription);
+
+          // Automatically submit the answer and get voice feedback
+          console.log('[Voice] Getting AI feedback...');
+          const evaluation = await apiService.evaluateAnswer({
+            question: currentQuestion.question,
+            user_answer: transcription,
+            ideal_answer: currentQuestion.ideal_answer,
+          });
+
+          setEvaluation(evaluation);
+
+          // Automatically play the voice feedback
+          await playFeedbackAudioFromBase64(evaluation.audio_base64);
+
+        } catch (error) {
+          console.error('[Voice] Error:', error);
+          Alert.alert('Error', `Voice conversation failed: ${error}\n\nPlease try typing instead.`);
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+
+      setRecording(null);
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      setIsSubmitting(false);
+    }
+  };
+
+  const playFeedbackAudioFromBase64 = async (audioBase64: string) => {
+    try {
+      setIsPlayingAudio(true);
+
+      // Set audio mode for playback
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+
+      // Unload previous sound if exists
+      if (sound) {
+        await sound.unloadAsync();
+      }
+
+      console.log('[Voice] Playing audio feedback...');
+
+      // Try using data URI directly (works on newer iOS versions)
+      const soundUri = `data:audio/mpeg;base64,${audioBase64}`;
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: soundUri },
+        { shouldPlay: false },
+        (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setIsPlayingAudio(false);
+            console.log('[Voice] Audio playback finished');
+          }
+        }
+      );
+
+      setSound(newSound);
+      await newSound.setRateAsync(FEEDBACK_PLAYBACK_RATE, true);
+      await newSound.playAsync();
+      console.log('[Voice] Audio playback started');
+    } catch (error) {
+      console.error('[Voice] Audio playback error:', error);
+      setIsPlayingAudio(false);
+      // Don't show alert for audio errors, just log it
+    }
+  };
 
   const handleSubmitAnswer = async () => {
     if (!userAnswer.trim()) {
@@ -76,35 +293,12 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
   };
 
   const playFeedbackAudio = async () => {
-    if (!evaluation?.audio_base64) return;
-
-    try {
-      setIsPlayingAudio(true);
-
-      // Unload previous sound if exists
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
-      // Convert base64 to audio and play
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/mp3;base64,${evaluation.audio_base64}` },
-        { shouldPlay: true }
-      );
-
-      setSound(newSound);
-
-      // Set up playback status update
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setIsPlayingAudio(false);
-        }
-      });
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      Alert.alert('Audio Error', 'Failed to play feedback audio.');
-      setIsPlayingAudio(false);
+    if (!evaluation?.audio_base64) {
+      Alert.alert('No Audio', 'No audio feedback available.');
+      return;
     }
+
+    await playFeedbackAudioFromBase64(evaluation.audio_base64);
   };
 
   const handleNextQuestion = () => {
@@ -135,7 +329,15 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onGoBack}>
+          <TouchableOpacity
+            onPress={async () => {
+              await stopPlayback();
+              if (isRecording) {
+                await stopRecording();
+              }
+              onGoBack();
+            }}
+          >
             <Text style={styles.backButton}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.questionCounter}>
@@ -148,33 +350,59 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
           <Text style={styles.questionText}>{currentQuestion.question}</Text>
         </View>
 
+        {!isRecording && !isSubmitting && !evaluation && (
+          <View style={styles.startPrompt}>
+            <Text style={styles.startPromptText}>
+              Read the question carefully, then tap below when you're ready to answer.
+            </Text>
+            <TouchableOpacity style={styles.startButton} onPress={startListening}>
+              <Text style={styles.startButtonText}>Start Answering</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {!evaluation ? (
           <>
-            <View style={styles.answerSection}>
-              <Text style={styles.answerLabel}>Your Answer</Text>
-              <TextInput
-                style={styles.answerInput}
-                multiline
-                numberOfLines={10}
-                value={userAnswer}
-                onChangeText={setUserAnswer}
-                placeholder="Type your answer here..."
-                placeholderTextColor="#666"
-                textAlignVertical="top"
-              />
-            </View>
+            {/* Voice Listening Indicator */}
+            {isRecording && (
+              <View style={styles.listeningBanner}>
+                <View style={styles.listeningPulse} />
+                <Text style={styles.listeningText}>🎤 Listening... Speak your answer</Text>
+                <TouchableOpacity
+                  style={styles.stopListeningButton}
+                  onPress={stopRecording}
+                >
+                  <Text style={styles.stopListeningText}>Stop & Submit</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-            <TouchableOpacity
-              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-              onPress={handleSubmitAnswer}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Submit Answer</Text>
-              )}
-            </TouchableOpacity>
+            {/* Voice-only mode - no text box */}
+            {!isRecording && !isSubmitting && (
+              <View style={styles.voiceOnlyPrompt}>
+                <Text style={styles.voiceOnlyText}>
+                  🎤 Voice Interview Mode
+                </Text>
+                <Text style={styles.voiceOnlySubtext}>
+                  Speak your answer naturally. Tap "Stop & Submit" when you're done.
+                </Text>
+                <TouchableOpacity
+                  style={styles.restartButton}
+                  onPress={startListening}
+                >
+                  <Text style={styles.restartButtonText}>🔄 Start Over</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {isSubmitting && (
+              <View style={styles.processingCard}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.processingText}>
+                  Processing your answer...
+                </Text>
+              </View>
+            )}
           </>
         ) : (
           <View style={styles.evaluationSection}>
@@ -276,6 +504,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 28,
   },
+  startPrompt: {
+    backgroundColor: '#1c1c1e',
+    padding: 18,
+    borderRadius: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  startPromptText: {
+    color: '#a1a1a6',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  startButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+  },
+  startButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
   answerSection: {
     marginBottom: 20,
   },
@@ -305,11 +557,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   recordingIndicator: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#2c2c2e',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  recordingText: {
     color: '#FF3B30',
     fontSize: 14,
     fontWeight: '600',
-    marginTop: 8,
-    textAlign: 'center',
   },
   answerInput: {
     backgroundColor: '#1c1c1e',
@@ -409,6 +666,80 @@ const styles = StyleSheet.create({
   nextButtonText: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#ffffff',
+  },
+  listeningBanner: {
+    backgroundColor: '#FF3B30',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  listeningPulse: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#ffffff',
+    marginRight: 8,
+  },
+  listeningText: {
+    fontSize: 16,
+    color: '#ffffff',
+    fontWeight: '700',
+    flex: 1,
+  },
+  stopListeningButton: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  stopListeningText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  voiceOnlyPrompt: {
+    backgroundColor: '#1c1c1e',
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  voiceOnlyText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  voiceOnlySubtext: {
+    fontSize: 14,
+    color: '#a1a1a6',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  restartButton: {
+    backgroundColor: '#FFD60A',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  restartButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  processingCard: {
+    backgroundColor: '#1c1c1e',
+    padding: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  processingText: {
+    marginTop: 12,
+    fontSize: 16,
     color: '#ffffff',
   },
 });

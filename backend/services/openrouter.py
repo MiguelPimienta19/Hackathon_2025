@@ -33,33 +33,43 @@ async def evaluate_answer(user_answer: str, question: str, ideal_answer: str = N
     """
 
     # Build the evaluation prompt
-    prompt = f"""You are an expert technical interviewer. Evaluate the following answer to a technical interview question.
+    prompt = f"""You are a friendly technical interviewer having a conversation with a candidate. Evaluate their answer in a direct, concise tone that stays encouraging without filler. Use friendly second-person language (use "you" and "your" throughout) and keep the mood conversational, like you're cheerleading the candidate through their growth, while also being honest about inaccuracies or missing concepts.
 
 Question: {question}
 
-User's Answer: {user_answer}
+Their Answer: {user_answer}
 """
 
     if ideal_answer:
-        prompt += f"\nIdeal Answer: {ideal_answer}"
+        prompt += f"\nIdeal Answer Reference: {ideal_answer}"
 
     prompt += """
 
-Provide a detailed evaluation in the following JSON format:
+Provide feedback in the following JSON format:
 {
     "score": <0-5>,
-    "feedback": "<2-3 sentence overall feedback>",
-    "strengths": ["<strength 1>", "<strength 2>"],
-    "improvements": ["<improvement 1>", "<improvement 2>"]
+    "feedback": "<up to 1 short sentence that states the key observation, no filler or cheerleading, use 'you' and 'your'>",
+    "strengths": ["<what you did well - use 'you'>", "<another strength>"],
+    "improvements": ["<what you could improve - use 'you'>", "<another area>"]
 }
 
-Score guide:
-- 5: Excellent, complete answer with good examples
-- 4: Good answer, minor details missing
-- 3: Acceptable, but missing key points
-- 2: Incomplete, fundamental gaps
-- 1: Poor understanding
-- 0: Completely incorrect or off-topic
+IMPORTANT:
+- Speak directly to the candidate with "you" and "your" (never generalize as "the user").
+- Keep the tone energetic, conversational, and encouraging—think of a supportive interviewer who celebrates wins and coachingly nudges toward growth. Avoid filler words like "really", "just", "kind of", or overly verbose transitions.
+- The `feedback` field should be lively, use short enthusiastic sentences, and link to the strengths/improvements that follow.
+- Each `strengths` and `improvements` entry must be grounded in what the candidate actually said; if they explicitly don't know the answer, note that rather than inventing extra positives.
+- Mention why a strength matters and why an improvement will help the interview outcome so candidates understand the stakes.
+- Refer to the ideal answer when it clarifies why the improvement matters or why a strength is notable.
+- Challenge any unrealistic or incorrect claims directly but kindly; explain why they would hurt a technical interview score while still being encouraging.
+- Limit `strengths` and `improvements` to the top two most meaningful points each to keep the feedback concise.
+- Do not start entries with bullet characters like `*`, `-`, or `•`; return clean sentences or fragments instead.
+- Use the score guide below:
+  5: Excellent! Complete answer with good examples
+  4: Great answer, just minor details missing
+  3: Good start, but missing some key points
+  2: You're on the right track, but fundamental gaps
+  1: Let's work on understanding this better
+  0: Not quite right, let's review this topic
 
 Return ONLY the JSON, no other text."""
 

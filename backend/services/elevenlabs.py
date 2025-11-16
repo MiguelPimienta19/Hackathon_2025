@@ -1,6 +1,6 @@
 import httpx
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # ElevenLabs API configuration
 ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech"
@@ -11,7 +11,28 @@ def get_api_key():
 
 def get_voice_id():
     """Get voice ID from environment, or use default"""
-    return os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")  # Default: Rachel voice
+    return os.getenv("ELEVENLABS_VOICE_ID", "MzqUf1HbJ8UmQ0wUsx2p")  # Default: Rachel voice
+
+
+def parse_float_env(key: str, default: float) -> float:
+    value = os.getenv(key)
+    if value:
+        try:
+            return float(value)
+        except ValueError:
+            pass
+    return default
+
+
+def get_voice_settings() -> Dict[str, float]:
+    return {
+        "stability": parse_float_env("ELEVENLABS_TTS_STABILITY", 0.25),
+        "similarity_boost": parse_float_env("ELEVENLABS_TTS_SIMILARITY", 0.8),
+    }
+
+
+def get_voice_style() -> Optional[str]:
+    return os.getenv("ELEVENLABS_VOICE_STYLE")
 
 
 async def text_to_speech(text: str, voice_id: str = None) -> bytes:
@@ -35,6 +56,11 @@ async def text_to_speech(text: str, voice_id: str = None) -> bytes:
     url = f"{ELEVENLABS_API_URL}/{voice_id}"
 
     try:
+        voice_settings = get_voice_settings()
+        voice_style = get_voice_style()
+        if voice_style:
+            voice_settings["style"] = voice_style
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 url,
@@ -46,13 +72,9 @@ async def text_to_speech(text: str, voice_id: str = None) -> bytes:
                 json={
                     "text": text,
                     "model_id": "eleven_turbo_v2",  # Faster model
-                    "voice_settings": {
-                        "stability": 0.5,
-                        "similarity_boost": 0.75
-                    }
+                    "voice_settings": voice_settings
                 }
             )
-
             response.raise_for_status()
 
             # Return the audio bytes
