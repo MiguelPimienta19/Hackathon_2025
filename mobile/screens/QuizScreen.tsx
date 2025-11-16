@@ -220,7 +220,7 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
         <BlurView intensity={80} tint="dark" style={styles.errorContainer}>
           <Text style={styles.errorText}>No questions found</Text>
           <Text style={styles.errorHint}>Make sure backend is running on http://localhost:8000</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadQuestions}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => selectedTopic && loadQuestions(selectedTopic)}>
             <LinearGradient colors={['#00D4FF', '#0099CC']} style={styles.gradientButton}>
               <Text style={styles.retryText}>Retry</Text>
             </LinearGradient>
@@ -698,58 +698,56 @@ const styles = StyleSheet.create({
 
   // Final Score
   finalScoreContainer: {
-    padding: 24,
+    padding: 32,
     borderRadius: 20,
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
-    marginTop: 8,
+    backgroundColor: '#1c1c1e',
+    marginTop: 20,
+    borderWidth: 2,
+    borderColor: '#2c2c2e',
   },
   finalScoreIcon: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   finalScoreTitle: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '800',
-    color: '#1a1a1a',
-    marginBottom: 8,
+    color: '#ffffff',
+    marginBottom: 12,
+    letterSpacing: -0.5,
   },
   finalScoreText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666666',
-    marginBottom: 16,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#a1a1a6',
+    marginBottom: 24,
     textAlign: 'center',
   },
   percentageContainer: {
-    marginBottom: 20,
+    backgroundColor: '#2c2c2e',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginBottom: 28,
   },
   percentageText: {
-    fontSize: 48,
+    fontSize: 56,
     fontWeight: '900',
-    color: '#8E2DE2',
+    color: '#58CC02',
     letterSpacing: -2,
   },
   doneButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 40,
+    paddingVertical: 16,
+    paddingHorizontal: 48,
     borderRadius: 14,
-    backgroundColor: '#58CC02',
-    shadowColor: '#58CC02',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: '#007AFF',
+    minWidth: 200,
   },
   doneButtonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+    fontSize: 17,
+    fontWeight: '700',
+    textAlign: 'center',
     letterSpacing: 0.5,
   },
 

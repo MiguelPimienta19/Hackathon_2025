@@ -72,25 +72,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   featureContainer: {
-    gap: 28,
-    marginVertical: 60,
+    gap: 20,
   },
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#2c2c2e',
-    paddingLeft: 20,
+    backgroundColor: '#1c1c1e',
+    padding: 20,
+    borderRadius: 16,
   },
   featureIcon: {
-    marginRight: 20,
+    marginRight: 16,
   },
   featureText: {
     fontSize: 18,
     color: '#ffffff',
     fontWeight: '600',
-    letterSpacing: 0.3,
   },
   getStartedButton: {
     backgroundColor: '#007AFF',
