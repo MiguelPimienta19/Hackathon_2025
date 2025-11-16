@@ -13,6 +13,8 @@ from models.requests import EvaluateAnswerRequest, CheckAnswerRequest
 from models.questions import Question, QuestionResponse
 from typing import List, Optional
 
+
+
 # Load environment variables from .env.local in project root
 load_dotenv("../.env.local")
 
