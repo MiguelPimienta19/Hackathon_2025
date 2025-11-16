@@ -15,6 +15,7 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { apiService, Question } from '../services/api';
+import { statsService } from '../services/stats';
 
 const { height, width } = Dimensions.get('window');
 
@@ -48,6 +49,7 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
     C: new Animated.Value(1),
     D: new Animated.Value(1),
   });
+  const [statsUpdated, setStatsUpdated] = useState(false);
 
   useEffect(() => {
     if (questions.length > 0) {
@@ -60,9 +62,26 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
     }
   }, [currentIndex, questions.length]);
 
+  // Update stats when quiz is completed
+  useEffect(() => {
+    if (
+      questions.length > 0 &&
+      currentIndex === questions.length - 1 &&
+      submitted &&
+      !statsUpdated
+    ) {
+      // Quiz is complete, update stats
+      statsService.completeQuiz(score, questions.length).then(() => {
+        setStatsUpdated(true);
+        console.log('[Stats] Quiz completion recorded');
+      });
+    }
+  }, [currentIndex, submitted, questions.length, score, statsUpdated]);
+
   const loadQuestions = async (topic: string) => {
     try {
       setLoading(true);
+      setStatsUpdated(false); // Reset stats flag for new quiz
       const data = await apiService.getQuestions({
         topic,
         limit: 10,

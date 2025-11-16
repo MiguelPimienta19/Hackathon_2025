@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { apiService, EvaluateAnswerResponse, API_BASE_URL, DeepQuestion } from '
 import { Audio } from 'expo-av';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { statsService } from '../services/stats';
 
 interface InterviewScreenProps {
   onGoBack: () => void;
@@ -41,6 +42,8 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const silenceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [questionScores, setQuestionScores] = useState<number[]>([]);
+  const [statsUpdated, setStatsUpdated] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -52,6 +55,8 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
         limit: 5,
       });
       setQuestions(data);
+      setQuestionScores([]);
+      setStatsUpdated(false);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load deep questions:', error);
@@ -102,6 +107,23 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
       }
     };
   }, []);
+
+  // Track interview completion and update stats
+  useEffect(() => {
+    if (
+      questions.length > 0 &&
+      questionScores.length === questions.length &&
+      !statsUpdated
+    ) {
+      // All questions answered - calculate average score and update stats
+      const averageScore = questionScores.reduce((sum, score) => sum + score, 0) / questionScores.length;
+
+      statsService.completeInterview(averageScore).then(() => {
+        setStatsUpdated(true);
+        console.log('[Stats] Interview completion recorded with average score:', averageScore);
+      });
+    }
+  }, [questionScores, questions.length, statsUpdated]);
 
   const startListening = async () => {
     if (isRecording || isSubmitting || evaluation) return;
@@ -218,6 +240,7 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
 
           console.log('[Voice] Got evaluation, userAnswer state should be:', transcription);
           setEvaluation(evaluation);
+          setQuestionScores(prev => [...prev, evaluation.score]);
 
           // Automatically play the voice feedback
           await playFeedbackAudioFromBase64(evaluation.audio_base64);
@@ -296,6 +319,7 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
       });
 
       setEvaluation(result);
+      setQuestionScores(prev => [...prev, result.score]);
     } catch (error) {
       Alert.alert('Error', 'Failed to evaluate your answer. Please try again.');
       console.error('Evaluation error:', error);
