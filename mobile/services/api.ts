@@ -3,6 +3,9 @@
 // The default host points to your laptop's LAN IP so a phone on the same network can reach it.
 // If you ever want to override (e.g., simulators running against localhost), assign
 // `globalThis.__API_BASE_URL__` before this module runs.
+
+// Campus WiFi: http://10.108.65.189:8000
+// Home WiFi: http://10.0.0.98:8000
 const fallbackBaseUrl = 'http://10.108.65.189:8000';
 const overrideBaseUrl = (globalThis as any).__API_BASE_URL__ as string | undefined;
 export const API_BASE_URL = overrideBaseUrl ?? fallbackBaseUrl;

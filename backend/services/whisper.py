@@ -6,7 +6,9 @@ import base64
 import httpx
 from io import BytesIO
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+def get_api_key():
+    """Get API key from environment - called at runtime, not import time"""
+    return os.getenv("OPENAI_API_KEY")
 
 async def transcribe_audio(audio_base64: str) -> str:
     """
@@ -18,7 +20,8 @@ async def transcribe_audio(audio_base64: str) -> str:
     Returns:
         Transcribed text
     """
-    if not OPENAI_API_KEY:
+    api_key = get_api_key()
+    if not api_key:
         raise ValueError("OPENAI_API_KEY not found in environment variables")
 
     try:
@@ -37,7 +40,7 @@ async def transcribe_audio(audio_base64: str) -> str:
             response = await client.post(
                 "https://api.openai.com/v1/audio/transcriptions",
                 headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Authorization": f"Bearer {api_key}",
                 },
                 files={
                     "file": ("audio.m4a", audio_file, "audio/m4a"),
@@ -66,7 +69,8 @@ async def transcribe_audio(audio_base64: str) -> str:
 
 async def test_whisper_connection() -> dict:
     """Test if OpenAI Whisper API is accessible"""
-    if not OPENAI_API_KEY:
+    api_key = get_api_key()
+    if not api_key:
         return {
             "status": "error",
             "message": "OPENAI_API_KEY not found in environment variables"
@@ -78,7 +82,7 @@ async def test_whisper_connection() -> dict:
             response = await client.get(
                 "https://api.openai.com/v1/models",
                 headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Authorization": f"Bearer {api_key}",
                 }
             )
 

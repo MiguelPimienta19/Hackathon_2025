@@ -24,7 +24,8 @@ from pydantic import BaseModel
 
 
 # Load environment variables from .env.local in project root
-load_dotenv("../.env.local")
+# override=True ensures we always use the latest values from .env.local
+load_dotenv("../.env.local", override=True)
 
 # Create FastAPI app
 app = FastAPI(
@@ -334,16 +335,24 @@ async def get_all_questions(
 async def get_all_deep_questions(
     topic: Optional[str] = None,
     difficulty: Optional[str] = None,
-    limit: Optional[int] = None
+    limit: Optional[int] = None,
+    randomize: bool = Query(True)
 ):
     """
     Fetch open-ended deep interview prompts with optional filters.
+
+    Query Parameters:
+        - topic: Filter by topic
+        - difficulty: Filter by difficulty ("easy", "medium", "hard")
+        - limit: Maximum number of questions to return
+        - randomize: Randomize question order (default: True)
     """
     try:
         questions = await get_deep_questions(
             topic=topic,
             difficulty=difficulty,
-            limit=limit
+            limit=limit,
+            randomize=randomize
         )
         return questions
     except Exception as e:

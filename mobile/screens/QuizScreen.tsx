@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -259,7 +260,11 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
           </View>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Question Number */}
           <Text style={styles.questionNumber}>
             {currentIndex + 1} / {questions.length}
@@ -387,7 +392,7 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -407,7 +412,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 16,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
 
   // Top Bar with Progress
@@ -698,50 +705,50 @@ const styles = StyleSheet.create({
 
   // Final Score
   finalScoreContainer: {
-    padding: 32,
+    padding: 24,
     borderRadius: 20,
     alignItems: 'center',
     backgroundColor: '#1c1c1e',
-    marginTop: 20,
+    marginTop: 12,
     borderWidth: 2,
     borderColor: '#2c2c2e',
   },
   finalScoreIcon: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   finalScoreTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: '#ffffff',
-    marginBottom: 12,
+    marginBottom: 8,
     letterSpacing: -0.5,
   },
   finalScoreText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: '#a1a1a6',
-    marginBottom: 24,
+    marginBottom: 20,
     textAlign: 'center',
   },
   percentageContainer: {
     backgroundColor: '#2c2c2e',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
     borderRadius: 16,
-    marginBottom: 28,
+    marginBottom: 20,
   },
   percentageText: {
-    fontSize: 56,
+    fontSize: 48,
     fontWeight: '900',
     color: '#58CC02',
     letterSpacing: -2,
   },
   doneButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 48,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
     borderRadius: 14,
     backgroundColor: '#007AFF',
-    minWidth: 200,
+    minWidth: 180,
   },
   doneButtonText: {
     color: '#ffffff',

@@ -95,10 +95,17 @@ async def get_questions(
 async def get_deep_questions(
     topic: Optional[str] = None,
     difficulty: Optional[str] = None,
-    limit: Optional[int] = None
+    limit: Optional[int] = None,
+    randomize: bool = True
 ) -> List[Dict[str, Any]]:
     """
     Fetch deep question prompts (open-ended) from Supabase.
+
+    Args:
+        topic: Filter by topic
+        difficulty: Filter by difficulty
+        limit: Maximum number of questions to return
+        randomize: Whether to randomize the order (default True)
     """
     try:
         client = get_supabase_client()
@@ -108,7 +115,7 @@ async def get_deep_questions(
             query = query.eq("topic", topic)
         if difficulty:
             query = query.eq("difficulty", difficulty)
-        if limit:
+        if not randomize and limit:
             query = query.limit(limit)
 
         response = query.execute()
@@ -123,6 +130,12 @@ async def get_deep_questions(
                 "difficulty": row.get("difficulty"),
                 "rubric_points": row.get("rubric_points") or [],
             })
+
+        # Randomize if requested
+        if randomize:
+            random.shuffle(normalized)
+            if limit:
+                normalized = normalized[:limit]
 
         return normalized
 

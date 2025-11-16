@@ -199,18 +199,24 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
             throw new Error('Transcription failed');
           }
 
-          const { transcription } = await transcribeResponse.json();
+          const transcribeData = await transcribeResponse.json();
+          const transcription = transcribeData.transcription || '';
           console.log('[Voice] Transcription:', transcription);
+          console.log('[Voice] Full transcribe response:', transcribeData);
+
+          // Set user answer FIRST before evaluation
           setUserAnswer(transcription);
 
           // Automatically submit the answer and get voice feedback
           console.log('[Voice] Getting AI feedback...');
+          console.log('[Voice] Sending user_answer to API:', transcription);
           const evaluation = await apiService.evaluateAnswer({
             question: currentQuestion.prompt,
             user_answer: transcription,
             ideal_answer: currentQuestion.rubric_points.join('\n• '),
           });
 
+          console.log('[Voice] Got evaluation, userAnswer state should be:', transcription);
           setEvaluation(evaluation);
 
           // Automatically play the voice feedback
@@ -463,12 +469,12 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
             </View>
 
             {/* Show what was transcribed */}
-            {userAnswer && (
-              <View style={styles.transcriptionCard}>
-                <Text style={styles.transcriptionLabel}>📝 What You Said</Text>
-                <Text style={styles.transcriptionText}>{userAnswer}</Text>
-              </View>
-            )}
+            <View style={styles.transcriptionCard}>
+              <Text style={styles.transcriptionLabel}>📝 What You Said</Text>
+              <Text style={styles.transcriptionText}>
+                {userAnswer || '(No transcription available)'}
+              </Text>
+            </View>
 
             <View style={styles.feedbackCard}>
               <Text style={styles.feedbackLabel}>AI Feedback</Text>
