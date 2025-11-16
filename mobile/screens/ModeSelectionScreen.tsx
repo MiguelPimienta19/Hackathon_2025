@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -14,7 +14,7 @@ export const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({ onNavi
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Choose Your Mode</Text>
           <Text style={styles.subtitle}>Select how you want to practice</Text>
@@ -56,7 +56,7 @@ export const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({ onNavi
         >
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -68,7 +68,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 24,
+    paddingBottom: 40,
   },
   header: {
     marginTop: 20,
