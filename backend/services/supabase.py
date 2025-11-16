@@ -1,0 +1,127 @@
+import os
+from typing import List, Dict, Any, Optional
+from supabase import create_client
+
+# Supabase client initialization
+_supabase_client: Any = None
+
+
+def get_supabase_client():
+    """Get Supabase client - initialized at runtime, not import time"""
+    global _supabase_client
+
+    if _supabase_client is None:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+
+        if not url or not key:
+            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
+
+        _supabase_client = create_client(url, key)
+
+    return _supabase_client
+
+
+async def get_questions(
+    difficulty: Optional[str] = None,
+    topic: Optional[str] = None,
+    subtopic: Optional[str] = None,
+    limit: Optional[int] = None
+) -> List[Dict[str, Any]]:
+    """
+    Fetch questions from Supabase with optional filters.
+
+    Args:
+        difficulty: Filter by difficulty ("easy", "medium", "hard")
+        topic: Filter by topic (e.g., "Pointers & Memory")
+        subtopic: Filter by subtopic (e.g., "memory", "heap")
+        limit: Maximum number of questions to return
+
+    Returns:
+        List of question dictionaries
+    """
+    try:
+        client = get_supabase_client()
+        query = client.table("questions").select("*")
+
+        # Apply filters if provided
+        if difficulty:
+            query = query.eq("difficulty", difficulty)
+
+        if topic:
+            query = query.eq("topic", topic)
+
+        if subtopic:
+            query = query.eq("subtopic", subtopic)
+
+        if limit:
+            query = query.limit(limit)
+
+        # Execute query
+        response = query.execute()
+
+        return response.data
+
+    except Exception as e:
+        print(f"Error fetching questions from Supabase: {e}")
+        raise
+
+
+async def get_question_by_id(question_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch a single question by its ID.
+
+    Args:
+        question_id: UUID of the question
+
+    Returns:
+        Question dictionary or None if not found
+    """
+    try:
+        client = get_supabase_client()
+        response = client.table("questions").select("*").eq("id", question_id).execute()
+
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
+
+    except Exception as e:
+        print(f"Error fetching question by ID from Supabase: {e}")
+        raise
+
+
+async def test_supabase_connection() -> Dict[str, Any]:
+    """
+    Test Supabase connection by fetching one question.
+
+    Returns:
+        Status dictionary with connection info
+    """
+    try:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+
+        if not url or not key:
+            return {
+                "status": "error",
+                "error": "SUPABASE_URL or SUPABASE_KEY not found in environment variables"
+            }
+
+        client = get_supabase_client()
+
+        # Try to fetch one question as a test
+        response = client.table("questions").select("*").limit(1).execute()
+
+        return {
+            "status": "success",
+            "message": "Supabase connection successful!",
+            "supabase_url": url,
+            "questions_count": len(response.data),
+            "sample_question": response.data[0] if response.data else None
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }

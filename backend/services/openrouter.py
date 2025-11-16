@@ -9,6 +9,8 @@ def get_api_key():
     """Get API key from environment - called at runtime, not import time"""
     return os.getenv("OPENROUTER_API_KEY")
 
+#need this here because we call from env.local in the root directory.    
+
 # Using Gemini 2.5 Flash via OpenRouter
 MODEL = "google/gemini-2.5-flash"
 
@@ -96,7 +98,23 @@ Return ONLY the JSON, no other text."""
 
             # Parse the JSON response
             import json
-            evaluation = json.loads(ai_response)
+            import re
+
+            # Sometimes Gemini wraps JSON in code blocks, so clean it up
+            # Remove markdown code blocks if present
+            cleaned_response = re.sub(r'```json\s*|\s*```', '', ai_response).strip()
+
+            try:
+                evaluation = json.loads(cleaned_response)
+            except json.JSONDecodeError:
+                # If still can't parse, return a default structure
+                print(f"Could not parse response: {ai_response}")
+                evaluation = {
+                    "score": 3,
+                    "feedback": ai_response,
+                    "strengths": ["Response received"],
+                    "improvements": ["AI returned unexpected format"]
+                }
 
             return evaluation
 
