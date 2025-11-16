@@ -10,40 +10,27 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiService, EvaluateAnswerResponse, API_BASE_URL } from '../services/api';
+import { apiService, EvaluateAnswerResponse, API_BASE_URL, DeepQuestion } from '../services/api';
 import { Audio } from 'expo-av';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
 interface InterviewScreenProps {
   onGoBack: () => void;
 }
 
-// Sample interview questions
-const INTERVIEW_QUESTIONS = [
-  {
-    question: 'Explain how a hash table works and its time complexity.',
-    ideal_answer: 'A hash table uses a hash function to compute an index into an array of buckets. It handles collisions using chaining or open addressing. Average time complexity is O(1) for insert, delete, and lookup operations.',
-  },
-  {
-    question: 'What is the difference between a process and a thread?',
-    ideal_answer: 'A process is an independent program with its own memory space, while a thread is a unit of execution within a process that shares memory with other threads. Threads are lighter weight and have faster context switching.',
-  },
-  {
-    question: 'Explain the concept of closures in JavaScript.',
-    ideal_answer: 'A closure is a function that has access to variables in its outer scope, even after the outer function has returned. It allows functions to maintain state and create private variables.',
-  },
-  {
-    question: 'What are the differences between SQL and NoSQL databases?',
-    ideal_answer: 'SQL databases are relational, use structured schemas, and support ACID transactions. NoSQL databases are non-relational, schema-flexible, and designed for horizontal scaling. SQL is best for complex queries, NoSQL for high-volume simple queries.',
-  },
-  {
-    question: 'Explain how REST APIs work and what makes them RESTful.',
-    ideal_answer: 'REST APIs use HTTP methods (GET, POST, PUT, DELETE) to perform CRUD operations on resources. RESTful principles include statelessness, client-server separation, cacheability, and a uniform interface with resource-based URLs.',
-  },
-];
+const TOPICS = [
+  "Data Structures & Complexity (Conceptual)",
+  "System Design, Backend & Data",
+  "Programming Language & Debugging"
+] as const;
 
 const FEEDBACK_PLAYBACK_RATE = 1.15;
 
 export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) => {
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<DeepQuestion[]>([]);
+  const [loading, setLoading] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,7 +42,29 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
   const [isListening, setIsListening] = useState(false);
   const silenceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const currentQuestion = INTERVIEW_QUESTIONS[currentQuestionIndex];
+  const currentQuestion = questions[currentQuestionIndex];
+
+  const loadQuestions = async (topic: string) => {
+    try {
+      setLoading(true);
+      const data = await apiService.getDeepQuestions({
+        topic,
+        limit: 5,
+      });
+      setQuestions(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load deep questions:', error);
+      Alert.alert('Error', 'Failed to load questions. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleTopicSelect = async (topic: string) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedTopic(topic);
+    await loadQuestions(topic);
+  };
   const stopPlayback = async () => {
     if (sound) {
       try {
@@ -197,9 +206,9 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
           // Automatically submit the answer and get voice feedback
           console.log('[Voice] Getting AI feedback...');
           const evaluation = await apiService.evaluateAnswer({
-            question: currentQuestion.question,
+            question: currentQuestion.prompt,
             user_answer: transcription,
-            ideal_answer: currentQuestion.ideal_answer,
+            ideal_answer: currentQuestion.rubric_points.join('\n• '),
           });
 
           setEvaluation(evaluation);
@@ -275,9 +284,9 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
       setIsSubmitting(true);
 
       const result = await apiService.evaluateAnswer({
-        question: currentQuestion.question,
+        question: currentQuestion.prompt,
         user_answer: userAnswer,
-        ideal_answer: currentQuestion.ideal_answer,
+        ideal_answer: currentQuestion.rubric_points.join('\n• '),
       });
 
       setEvaluation(result);
@@ -299,7 +308,7 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < INTERVIEW_QUESTIONS.length - 1) {
+    if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setUserAnswer('');
       setEvaluation(null);
@@ -322,6 +331,64 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
     return '#FF3B30';
   };
 
+  const getTopicIcon = (topic: string) => {
+    if (topic.includes('Data Structures')) return 'file-tree';
+    if (topic.includes('System Design')) return 'server-network';
+    if (topic.includes('Programming Language')) return 'code-braces';
+    return 'help-circle';
+  };
+
+  const getTopicColor = (index: number) => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1'];
+    return colors[index % colors.length];
+  };
+
+  // Topic Selection Screen
+  if (!selectedTopic) {
+    return (
+      <View style={[styles.container, { backgroundColor: '#000000' }]}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.topicSelectionContainer}>
+            <TouchableOpacity onPress={onGoBack} style={styles.topicBackButton}>
+              <Text style={styles.backButton}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.topicTitle}>Choose a Topic</Text>
+            <Text style={styles.topicSubtitle}>Deep Dive Interview Practice</Text>
+            <View style={styles.topicGrid}>
+              {TOPICS.map((topic, index) => {
+                const iconName = getTopicIcon(topic);
+                const borderColor = getTopicColor(index);
+                return (
+                  <TouchableOpacity
+                    key={topic}
+                    style={[styles.topicCard, { borderColor }]}
+                    onPress={() => handleTopicSelect(topic)}
+                  >
+                    <MaterialCommunityIcons name={iconName as any} size={36} color={borderColor} />
+                    <Text style={styles.topicText}>{topic}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // Loading Screen
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading questions...</Text>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // Interview Screen
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -338,13 +405,13 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
             <Text style={styles.backButton}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.questionCounter}>
-            Question {currentQuestionIndex + 1} / {INTERVIEW_QUESTIONS.length}
+            Question {currentQuestionIndex + 1} / {questions.length}
           </Text>
         </View>
 
         <View style={styles.questionCard}>
           <Text style={styles.questionLabel}>Interview Question</Text>
-          <Text style={styles.questionText}>{currentQuestion.question}</Text>
+          <Text style={styles.questionText}>{currentQuestion?.prompt}</Text>
         </View>
 
         {!evaluation ? (
@@ -395,6 +462,14 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
               </Text>
             </View>
 
+            {/* Show what was transcribed */}
+            {userAnswer && (
+              <View style={styles.transcriptionCard}>
+                <Text style={styles.transcriptionLabel}>📝 What You Said</Text>
+                <Text style={styles.transcriptionText}>{userAnswer}</Text>
+              </View>
+            )}
+
             <View style={styles.feedbackCard}>
               <Text style={styles.feedbackLabel}>AI Feedback</Text>
               <Text style={styles.feedbackText}>{evaluation.feedback}</Text>
@@ -430,7 +505,7 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
 
             <TouchableOpacity style={styles.nextButton} onPress={handleNextQuestion}>
               <Text style={styles.nextButtonText}>
-                {currentQuestionIndex < INTERVIEW_QUESTIONS.length - 1
+                {currentQuestionIndex < questions.length - 1
                   ? 'Next Question'
                   : 'Finish Practice'}
               </Text>
@@ -446,6 +521,57 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
+  },
+  safeArea: {
+    flex: 1,
+    padding: 20,
+  },
+  topicSelectionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  topicBackButton: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 1,
+  },
+  topicTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  topicSubtitle: {
+    fontSize: 16,
+    color: '#a1a1a6',
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  topicGrid: {
+    gap: 16,
+  },
+  topicCard: {
+    backgroundColor: '#1c1c1e',
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  topicText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    flex: 1,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#ffffff',
+    textAlign: 'center',
   },
   scrollContent: {
     padding: 20,
@@ -608,6 +734,27 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 48,
     fontWeight: '800',
+  },
+  transcriptionCard: {
+    backgroundColor: '#1c1c1e',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+  },
+  transcriptionLabel: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '700',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  transcriptionText: {
+    fontSize: 16,
+    color: '#ffffff',
+    lineHeight: 24,
+    fontStyle: 'italic',
   },
   feedbackCard: {
     backgroundColor: '#1c1c1e',

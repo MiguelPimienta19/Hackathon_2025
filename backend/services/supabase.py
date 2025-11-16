@@ -80,10 +80,49 @@ async def get_questions(
                 'subtopic': row.get('subtopic'),
             })
 
+        # Randomize if requested
         if randomize:
             random.shuffle(normalized)
             if limit:
                 normalized = normalized[:limit]
+
+        return normalized
+
+    except Exception as e:
+        print(f"Error fetching questions from Supabase: {e}")
+        raise
+
+async def get_deep_questions(
+    topic: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    limit: Optional[int] = None
+) -> List[Dict[str, Any]]:
+    """
+    Fetch deep question prompts (open-ended) from Supabase.
+    """
+    try:
+        client = get_supabase_client()
+        query = client.table("deep_questions").select("*")
+
+        if topic:
+            query = query.eq("topic", topic)
+        if difficulty:
+            query = query.eq("difficulty", difficulty)
+        if limit:
+            query = query.limit(limit)
+
+        response = query.execute()
+        questions = response.data or []
+        normalized: List[Dict[str, Any]] = []
+
+        for row in questions:
+            normalized.append({
+                "id": row.get("id") or str(uuid.uuid4()),
+                "prompt": row.get("prompt"),
+                "topic": row.get("topic"),
+                "difficulty": row.get("difficulty"),
+                "rubric_points": row.get("rubric_points") or [],
+            })
 
         return normalized
 

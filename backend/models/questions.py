@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
 class Question(BaseModel):
@@ -56,5 +56,30 @@ class QuestionResponse(BaseModel):
                 "difficulty": "easy",
                 "topic": "Algorithms & Data Structures",
                 "subtopic": "data structures"
+            }
+        }
+
+
+class DeepQuestion(BaseModel):
+    """Model for an open-ended deep interview prompt."""
+    id: str
+    prompt: str
+    topic: str
+    difficulty: str
+    rubric_points: List[str]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "c4b38a77-c749-1ad6-9cf7-0823352d1",
+                "prompt": "Design a simple notification service for new messages.",
+                "topic": "System Design, Backend & Data",
+                "difficulty": "easy",
+                "rubric_points": [
+                    "Identifies producers, consumers, and storage for notifications.",
+                    "Describes the API flow from send to delivery.",
+                    "Mentions retry/backoff and auth.",
+                    "Highlights how data is deduped or rate-limited."
+                ]
             }
         }

@@ -33,7 +33,7 @@ async def evaluate_answer(user_answer: str, question: str, ideal_answer: str = N
     """
 
     # Build the evaluation prompt
-    prompt = f"""You are a friendly technical interviewer having a conversation with a candidate. Evaluate their answer in a direct, concise tone that stays encouraging without filler. Use friendly second-person language (use "you" and "your" throughout) and keep the mood conversational, like you're cheerleading the candidate through their growth, while also being honest about inaccuracies or missing concepts.
+    prompt = f"""You are an experienced technical interviewer evaluating a candidate's answer for HIGH STAKES interview preparation. This tool helps people land jobs worth $100K-$500K+, so your feedback must be exceptional quality - thorough, accurate, and genuinely educational.
 
 Question: {question}
 
@@ -41,62 +41,122 @@ Their Answer: {user_answer}
 """
 
     if ideal_answer:
-        prompt += f"\nIdeal Answer Reference: {ideal_answer}"
+        prompt += f"\nIdeal/Expected Answer: {ideal_answer}"
 
     prompt += """
 
-Provide feedback in the following JSON format:
+CRITICAL FIRST CHECK - "I DON'T KNOW" DETECTION:
+Before anything else, check if the candidate said any of these:
+- "I don't know"
+- "I'm not sure"
+- "I can't answer"
+- "I don't understand"
+- "Tell me"
+- "Explain to me"
+- Or any variation where they admit ignorance or ask YOU to explain
+
+IF THEY ADMIT IGNORANCE OR ASK FOR TEACHING:
+- Score: MUST be 0 or 1 (NO EXCEPTIONS)
+- feedback: "Let's go over what you need to know about this topic."
+- strengths: [] (empty - they gave no answer)
+- improvements: TEACH THE COMPLETE ANSWER from scratch. This is pure teaching mode.
+
+DO NOT give credit for saying "I don't know". DO NOT score above 1 if they explicitly admit they don't know.
+
+CHAIN-OF-THOUGHT REASONING (after checking for "I don't know"):
+1. Did they admit they don't know? If YES → Score 0-1 and teach
+2. What did they actually say (analyze their specific words)?
+3. What specific gaps, inaccuracies, or misunderstandings exist?
+4. What score accurately reflects their understanding?
+5. Plan educational feedback that will genuinely help them
+
+Now provide comprehensive feedback in this JSON format:
 {
     "score": <0-5>,
-    "feedback": "<up to 1 short sentence that states the key observation, no filler or cheerleading, use 'you' and 'your'>",
-    "strengths": ["<what you did well - use 'you'>", "<another strength>"],
-    "improvements": ["<what you could improve - use 'you'>", "<another area>"]
+    "feedback": "<2-4 sentences explaining your score and what the answer demonstrates about their understanding>",
+    "strengths": ["<specific strength with brief explanation>", "<another strength if applicable>"],
+    "improvements": ["<specific improvement with explanation and teaching>", "<another improvement>"]
 }
 
-IMPORTANT:
-- Speak directly to the candidate with "you" and "your" (never generalize as "the user").
-- Keep the tone energetic, conversational, and encouraging—think of a supportive interviewer who celebrates wins and coachingly nudges toward growth. Avoid filler words like "really", "just", "kind of", or overly verbose transitions.
-- The `feedback` field should be lively, use short enthusiastic sentences, and link to the strengths/improvements that follow.
-- Each `strengths` and `improvements` entry must be grounded in what the candidate actually said; if they explicitly don't know the answer, note that rather than inventing extra positives.
-- Mention why a strength matters and why an improvement will help the interview outcome so candidates understand the stakes.
-- Refer to the ideal answer when it clarifies why the improvement matters or why a strength is notable.
-- Challenge any unrealistic or incorrect claims directly but kindly; explain why they would hurt a technical interview score while still being encouraging.
-- Limit `strengths` and `improvements` to the top two most meaningful points each to keep the feedback concise.
-- Do not start entries with bullet characters like `*`, `-`, or `•`; return clean sentences or fragments instead.
-- Use the score guide below:
-  5: Excellent! Complete answer with good examples
-  4: Great answer, just minor details missing
-  3: Good start, but missing some key points
-  2: You're on the right track, but fundamental gaps
-  1: Let's work on understanding this better
-  0: Not quite right, let's review this topic
+SCORING GUIDELINES - BE CRITICAL AND REALISTIC:
+- 5: Perfect answer covering all key concepts with accurate details and good examples. Rare!
+- 4: Strong answer with all major points covered, maybe 1 minor detail missing
+- 3: Decent grasp but missing important concepts or has inaccuracies
+- 2: Surface-level understanding, missing fundamental concepts
+- 1: Significant misunderstanding or very incomplete
+- 0: Wrong answer or demonstrates no understanding
 
-Return ONLY the JSON, no other text."""
+FEEDBACK REQUIREMENTS BASED ON SCORE:
+
+For scores 0-2 (LOW - Critical Teaching Opportunity):
+This person needs to LEARN the concept. Your improvements section is their textbook.
+- `feedback`: Be direct about the gap. "You're missing [X core concept]" or "Let's go over what you need to know about this."
+- `improvements`: COMPREHENSIVE TEACHING MODE:
+  * Explain the core concept from first principles
+  * Break down the key components they need to understand
+  * Include examples, analogies, or comparisons if helpful
+  * Explain WHY this matters in interviews (interviewers look for X, Y, Z)
+  * If there's a common misconception, address it
+  * Aim for 2-4 detailed improvement points that actually teach
+- `strengths`: Only include if there's genuine insight. Empty [] is fine for wrong answers.
+
+For score 3 (MID - Gap Filling):
+They have the foundation but missing pieces.
+- `feedback`: "You got [X] right, but you're missing [Y critical concept]"
+- `improvements`: TARGETED TEACHING:
+  * Fill in the specific missing concepts with explanations
+  * Connect to what they already said correctly
+  * Explain how adding these details elevates the answer
+  * 2-3 focused improvement points
+- `strengths`: Acknowledge specific correct points (1-2 items)
+
+For scores 4-5 (HIGH - Polish & Edge Cases):
+Solid understanding, just refinement needed.
+- `feedback`: Praise the strong grasp, note any minor gaps
+- `improvements`: Advanced details, edge cases, or interview polish (1-2 items)
+- `strengths`: Specific strong points (1-2 items)
+
+QUALITY STANDARDS - REMEMBER THE STAKES:
+- This person is preparing for interviews worth $100K-$500K salaries
+- Your feedback could be the difference between passing and failing an interview
+- Be THOROUGH on low scores - teach them properly
+- Be HONEST - false confidence hurts them
+- Use "you" and "your" throughout (never "the user")
+- No bullet points (*/-/•) at the start of entries
+- Each improvement should teach something concrete, not vague advice
+- Challenge incorrect statements and explain exactly why they're wrong
+- If they would fail an interview with this answer, make that clear
+
+Return ONLY the JSON object, no other text."""
 
     try:
         api_key = get_api_key()
         if not api_key:
             raise ValueError("OPENROUTER_API_KEY not found in environment variables")
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:  # Increased timeout for reasoning
             response = await client.post(
                 OPENROUTER_API_URL,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
-                    "HTTP-Referer": "http://localhost:8000",  # Optional but recommended
-                    "X-Title": "Interview Coach"  # Optional but recommended
+                    "HTTP-Referer": "http://localhost:8000",
+                    "X-Title": "Interview Coach - High Stakes Prep"
                 },
                 json={
                     "model": MODEL,
                     "messages": [
                         {
+                            "role": "system",
+                            "content": "You are an expert technical interviewer providing high-quality, educational feedback. Take your time to think through your evaluation carefully before responding. Your feedback directly impacts someone's career trajectory."
+                        },
+                        {
                             "role": "user",
                             "content": prompt
                         }
                     ],
-                    "temperature": 0.7,
-                    "max_tokens": 1000
+                    "temperature": 0.8,  # Slightly higher for more creative teaching explanations
+                    "max_tokens": 3000  # Increased for comprehensive teaching with chain-of-thought
                 }
             )
 
@@ -125,6 +185,30 @@ Return ONLY the JSON, no other text."""
                     "strengths": ["Response received"],
                     "improvements": ["AI returned unexpected format"]
                 }
+
+            # POST-PROCESSING: Override score if LLM clearly missed "I don't know"
+            # Only check for explicit "I don't know" statements
+            user_answer_lower = user_answer.lower().strip()
+            print(f"[DEBUG] User answer (lowercased): '{user_answer_lower}'")
+            print(f"[DEBUG] LLM gave score: {evaluation.get('score', 'N/A')}")
+
+            explicit_dont_know = any(phrase in user_answer_lower for phrase in [
+                "i don't know",
+                "i do not know",
+                "i dont know",
+                "don't know how",
+                "dont know how"
+            ])
+
+            print(f"[DEBUG] Detected 'I don't know'? {explicit_dont_know}")
+
+            # If they explicitly said "I don't know" but got score > 1, override to 0
+            if explicit_dont_know and evaluation.get("score", 0) > 1:
+                print(f"[OVERRIDE] Detected 'I don't know' but LLM gave score {evaluation['score']}. Overriding to 0.")
+                evaluation["score"] = 0
+                # Update feedback to teaching mode
+                evaluation["feedback"] = "Let's go over what you need to know about this topic."
+                evaluation["strengths"] = []
 
             return evaluation
 

@@ -19,6 +19,14 @@ export interface Question {
   subtopic: string;
 }
 
+export interface DeepQuestion {
+  id: string;
+  prompt: string;
+  topic: string;
+  difficulty: string;
+  rubric_points: string[];
+}
+
 export interface CheckAnswerResponse {
   correct: boolean;
   correct_option?: string;
@@ -47,6 +55,12 @@ export interface GetQuestionsParams {
   subtopic?: string;
   limit?: number;
   randomize?: boolean;
+}
+
+export interface GetDeepQuestionsParams {
+  topic?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  limit?: number;
 }
 
 class ApiService {
@@ -166,6 +180,33 @@ class ApiService {
       return data;
     } catch (error) {
       console.error('Error evaluating answer:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch open-ended deep interview questions from the backend
+   */
+  async getDeepQuestions(params?: GetDeepQuestionsParams): Promise<DeepQuestion[]> {
+    try {
+      const queryParams = new URLSearchParams();
+
+      if (params?.topic) queryParams.append('topic', params.topic);
+      if (params?.difficulty) queryParams.append('difficulty', params.difficulty);
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+      const url = `${this.baseUrl}/api/deep-questions${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching deep questions:', error);
       throw error;
     }
   }

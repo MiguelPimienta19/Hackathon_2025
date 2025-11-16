@@ -9,10 +9,15 @@ import re
 
 from services.openrouter import test_openrouter_connection, evaluate_answer
 from services.elevenlabs import test_elevenlabs_connection, text_to_speech
-from services.supabase import test_supabase_connection, get_questions, get_question_by_id
+from services.supabase import (
+    test_supabase_connection,
+    get_questions,
+    get_question_by_id,
+    get_deep_questions,
+)
 from services.whisper import transcribe_audio, test_whisper_connection
 from models.requests import EvaluateAnswerRequest, CheckAnswerRequest
-from models.questions import Question, QuestionResponse
+from models.questions import Question, QuestionResponse, DeepQuestion
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -112,14 +117,13 @@ async def evaluate_user_answer(request: EvaluateAnswerRequest):
         )
 
         # Step 2: Generate voice feedback with ElevenLabs
+        # Only speak the main feedback, not strengths/improvements (they can read those)
         cleaned_feedback = clean_text(evaluation.get("feedback", ""))
         strengths = clean_list(evaluation.get("strengths", []))
         improvements = clean_list(evaluation.get("improvements", []))
-        speech_script = build_audio_script(
-            feedback=cleaned_feedback,
-            strengths=strengths,
-            improvements=improvements,
-        )
+
+        # Audio only speaks the feedback section for conciseness
+        speech_script = ensure_sentence(cleaned_feedback)
 
         audio_bytes = await text_to_speech(speech_script)
 
@@ -157,18 +161,20 @@ def clean_list(items: List[str]) -> List[str]:
     return [item for item in cleaned if item]
 
 
+def ensure_sentence(text: str) -> str:
+    """Ensure text ends with proper punctuation."""
+    sanitized = clean_text(text)
+    if not sanitized:
+        return ""
+    if sanitized[-1] not in ".!?":
+        sanitized += "."
+    return sanitized
+
+
 def build_audio_script(feedback: str, strengths: List[str], improvements: List[str]) -> str:
     """Create a more energetic script so the TTS audio covers feedback, strengths, and improvements."""
 
     MAX_AUDIO_ITEMS = 1
-
-    def ensure_sentence(text: str) -> str:
-        sanitized = clean_text(text)
-        if not sanitized:
-            return ""
-        if sanitized[-1] not in ".!?":
-            sanitized += "."
-        return sanitized
 
     def format_list(label: str, items: List[str]) -> str:
         if not items:
@@ -321,6 +327,29 @@ async def get_all_questions(
         return {
             "error": str(e),
             "message": "Failed to fetch questions"
+        }
+
+
+@app.get("/api/deep-questions", response_model=List[DeepQuestion])
+async def get_all_deep_questions(
+    topic: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    limit: Optional[int] = None
+):
+    """
+    Fetch open-ended deep interview prompts with optional filters.
+    """
+    try:
+        questions = await get_deep_questions(
+            topic=topic,
+            difficulty=difficulty,
+            limit=limit
+        )
+        return questions
+    except Exception as e:
+        return {
+            "error": str(e),
+            "message": "Failed to fetch deep questions"
         }
 
 # Get single question by ID
