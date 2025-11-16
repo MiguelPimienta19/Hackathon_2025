@@ -89,7 +89,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   modesContainer: {
-    flex: 1,
     gap: 20,
   },
   modeCard: {
