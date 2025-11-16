@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 type Screen = 'Landing' | 'ModeSelection' | 'Quiz' | 'Interview';
 
@@ -24,13 +25,13 @@ export const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({ onNavi
             style={[styles.modeCard, styles.fastCard]}
             onPress={() => onNavigate('Quiz')}
           >
-            <Text style={styles.modeIcon}>⚡️</Text>
-            <Text style={styles.modeTitle}>Fast</Text>
+            <Ionicons name="flash" size={48} color="#FFD60A" style={styles.modeIcon} />
+            <Text style={styles.modeTitle}>Quick Review</Text>
             <Text style={styles.modeDescription}>
               Quick multiple choice questions to test your knowledge
             </Text>
             <View style={styles.modeBadge}>
-              <Text style={styles.badgeText}>5-10 min</Text>
+              <Text style={styles.badgeText}>5 min</Text>
             </View>
           </TouchableOpacity>
 
@@ -38,13 +39,13 @@ export const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({ onNavi
             style={[styles.modeCard, styles.longCard]}
             onPress={() => onNavigate('Interview')}
           >
-            <Text style={styles.modeIcon}>🎤</Text>
-            <Text style={styles.modeTitle}>Long</Text>
+            <Ionicons name="mic" size={48} color="#007AFF" style={styles.modeIcon} />
+            <Text style={styles.modeTitle}>Deep Dive</Text>
             <Text style={styles.modeDescription}>
               In-depth interview practice with AI voice feedback
             </Text>
             <View style={styles.modeBadge}>
-              <Text style={styles.badgeText}>15-30 min</Text>
+              <Text style={styles.badgeText}>10-15 min</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -102,7 +103,6 @@ const styles = StyleSheet.create({
     borderColor: '#007AFF',
   },
   modeIcon: {
-    fontSize: 48,
     marginBottom: 12,
   },
   modeTitle: {
