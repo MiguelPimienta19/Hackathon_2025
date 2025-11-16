@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 type Screen = 'Landing' | 'ModeSelection' | 'Quiz' | 'Interview';
 
@@ -20,15 +21,15 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onNavigate }) => {
 
         <View style={styles.featureContainer}>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>📚</Text>
+            <Ionicons name="library" size={32} color="#FFD60A" style={styles.featureIcon} />
             <Text style={styles.featureText}>Practice Questions</Text>
           </View>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>🎯</Text>
-            <Text style={styles.featureText}>AI Feedback</Text>
+            <Ionicons name="checkmark-circle" size={32} color="#34C759" style={styles.featureIcon} />
+            <Text style={styles.featureText}>Instant Feedback</Text>
           </View>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>🚀</Text>
+            <Ionicons name="trending-up" size={32} color="#007AFF" style={styles.featureIcon} />
             <Text style={styles.featureText}>Track Progress</Text>
           </View>
         </View>
@@ -81,7 +82,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   featureIcon: {
-    fontSize: 32,
     marginRight: 16,
   },
   featureText: {
