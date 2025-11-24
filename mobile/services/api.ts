@@ -1,14 +1,12 @@
 // API service for communicating with the backend
 
-// The default host points to your laptop's LAN IP so a phone on the same network can reach it.
-// If you ever want to override (e.g., simulators running against localhost), assign
-// `globalThis.__API_BASE_URL__` before this module runs.
+// The API_BASE_URL is imported from api.config.ts (which is gitignored)
+// Copy api.config.example.ts to api.config.ts and set your local IP
+import { API_BASE_URL as configBaseUrl } from './api.config';
 
-// Campus WiFi: http://10.108.65.189:8000
-// Home WiFi: http://10.0.0.98:8000
-const fallbackBaseUrl = 'http://10.108.65.189:8000';
+// You can still override via globalThis if needed (e.g., for testing)
 const overrideBaseUrl = (globalThis as any).__API_BASE_URL__ as string | undefined;
-export const API_BASE_URL = overrideBaseUrl ?? fallbackBaseUrl;
+export const API_BASE_URL = overrideBaseUrl ?? configBaseUrl;
 
 export interface Question {
   id: string;

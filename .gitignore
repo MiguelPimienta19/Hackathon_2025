@@ -9,6 +9,8 @@ __pycache__/
 # Environment variables
 .env
 .env.local
+mobile/.env
+mobile/services/api.config.ts
 
 # IDE
 .vscode/
