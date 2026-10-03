@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LandingScreen } from './screens/LandingScreen';
 import { ModeSelectionScreen } from './screens/ModeSelectionScreen';
 import { QuizScreen } from './screens/QuizScreen';
@@ -22,16 +23,22 @@ export default function App() {
   };
 
   // Render the current screen
-  switch (currentScreen) {
-    case 'Landing':
-      return <LandingScreen onNavigate={navigate} />;
-    case 'ModeSelection':
-      return <ModeSelectionScreen onNavigate={navigate} onGoBack={goBack} />;
-    case 'Quiz':
-      return <QuizScreen onGoBack={goBack} />;
-    case 'Interview':
-      return <InterviewScreen onGoBack={goBack} />;
-    default:
-      return <LandingScreen onNavigate={navigate} />;
-  }
+  // SafeAreaProvider is required by the SafeAreaView used in every screen;
+  // Expo Go provides one implicitly, a static web build does not.
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'Landing':
+        return <LandingScreen onNavigate={navigate} />;
+      case 'ModeSelection':
+        return <ModeSelectionScreen onNavigate={navigate} onGoBack={goBack} />;
+      case 'Quiz':
+        return <QuizScreen onGoBack={goBack} />;
+      case 'Interview':
+        return <InterviewScreen onGoBack={goBack} />;
+      default:
+        return <LandingScreen onNavigate={navigate} />;
+    }
+  };
+
+  return <SafeAreaProvider>{renderScreen()}</SafeAreaProvider>;
 }

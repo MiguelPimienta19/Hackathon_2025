@@ -4,17 +4,20 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { apiService, EvaluateAnswerResponse, API_BASE_URL, DeepQuestion } from '../services/api';
-import { Audio } from 'expo-av';
+import { apiService, EvaluateAnswerResponse, DeepQuestion } from '../services/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { statsService } from '../services/stats';
+
+// Portfolio web demo: live voice capture (expo-av recording -> Whisper ->
+// Gemini -> ElevenLabs) cannot run in a static browser build, so the voice
+// flow plays a pre-scripted example answer instead. The screens, grading UI,
+// and interaction shape are the real app's; the spoken content is canned and
+// clearly labeled as such.
 
 interface InterviewScreenProps {
   onGoBack: () => void;
@@ -26,8 +29,6 @@ const TOPICS = [
   "Programming Language & Debugging"
 ] as const;
 
-const FEEDBACK_PLAYBACK_RATE = 1.15;
-
 export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) => {
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [questions, setQuestions] = useState<DeepQuestion[]>([]);
@@ -36,12 +37,9 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
   const [userAnswer, setUserAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [evaluation, setEvaluation] = useState<EvaluateAnswerResponse | null>(null);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const silenceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [isRecording, setIsRecording] = useState(false); // demo: example answer is being "transcribed"
+  const typingTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const [questionScores, setQuestionScores] = useState<number[]>([]);
   const [statsUpdated, setStatsUpdated] = useState(false);
 
@@ -60,7 +58,6 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
       setLoading(false);
     } catch (error) {
       console.error('Failed to load deep questions:', error);
-      Alert.alert('Error', 'Failed to load questions. Please try again.');
       setLoading(false);
     }
   };
@@ -70,40 +67,31 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
     setSelectedTopic(topic);
     await loadQuestions(topic);
   };
-  const stopPlayback = async () => {
-    if (sound) {
-      try {
-        await sound.stopAsync();
-      } catch (error) {
-        console.log('[Voice] stopAsync failed', error);
-      }
-      try {
-        await sound.unloadAsync();
-      } catch (error) {
-        console.log('[Voice] unloadAsync failed', error);
-      }
-      setIsPlayingAudio(false);
-      setSound(null);
+  const clearTypingTimer = () => {
+    if (typingTimerRef.current) {
+      clearInterval(typingTimerRef.current);
+      typingTimerRef.current = null;
     }
   };
 
-  // Request audio permissions and auto-start listening on mount
-  React.useEffect(() => {
-    (async () => {
-      const { granted } = await Audio.requestPermissionsAsync();
-      if (granted) {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-        // Permissions granted; user can manually start recording
-      }
-    })();
+  // Demo feedback voice uses the browser's built-in speech synthesis (offline);
+  // the live app plays ElevenLabs TTS audio returned by the backend.
+  const canSpeak =
+    typeof window !== 'undefined' && 'speechSynthesis' in window;
 
+  const stopSpeech = () => {
+    if (canSpeak) {
+      (window as any).speechSynthesis.cancel();
+    }
+    setIsPlayingAudio(false);
+  };
+
+  // Cleanup timers/speech on unmount
+  React.useEffect(() => {
     return () => {
-      // Cleanup on unmount
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
+      clearTypingTimer();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        (window as any).speechSynthesis.cancel();
       }
     };
   }, []);
@@ -125,233 +113,79 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
     }
   }, [questionScores, questions.length, statsUpdated]);
 
-  const startListening = async () => {
-    if (isRecording || isSubmitting || evaluation) return;
-
+  const submitAnswer = async (answerText: string) => {
+    setIsSubmitting(true);
     try {
-      console.log('[Voice] Auto-starting voice listening...');
-      setIsListening(true);
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
-      setIsRecording(true);
-
-      // Auto-stop after 30 seconds (safety limit)
-      silenceTimerRef.current = setTimeout(() => {
-        console.log('[Voice] Auto-stopping after timeout');
-        stopRecording();
-      }, 30000); // 30 seconds max
-
-    } catch (error) {
-      console.error('[Voice] Failed to start listening:', error);
-      setIsListening(false);
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const { granted } = await Audio.requestPermissionsAsync();
-      if (!granted) {
-        Alert.alert('Permission Required', 'Microphone permission is needed to record your answer.');
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-      Alert.alert('Error', 'Failed to start recording. Please try again.');
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!recording) return;
-
-    // Clear auto-stop timer
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-    }
-
-    try {
-      setIsRecording(false);
-      setIsListening(false);
-      setIsSubmitting(true);
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-
-      if (uri) {
-        try {
-          console.log('[Voice] Audio URI:', uri);
-
-          // Send audio file directly using FormData (no deprecated APIs!)
-          const formData = new FormData();
-          formData.append('file', {
-            uri: uri,
-            type: 'audio/m4a',
-            name: 'recording.m4a',
-          } as any);
-
-          console.log('[Voice] Transcribing...');
-          const transcribeResponse = await fetch(`${API_BASE_URL}/api/transcribe-file`, {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (!transcribeResponse.ok) {
-            const errorText = await transcribeResponse.text();
-            console.error('[Voice] Transcription error:', errorText);
-            throw new Error('Transcription failed');
-          }
-
-          const transcribeData = await transcribeResponse.json();
-          const transcription = transcribeData.transcription || '';
-          console.log('[Voice] Transcription:', transcription);
-          console.log('[Voice] Full transcribe response:', transcribeData);
-
-          // Set user answer FIRST before evaluation
-          setUserAnswer(transcription);
-
-          // Automatically submit the answer and get voice feedback
-          console.log('[Voice] Getting AI feedback...');
-          console.log('[Voice] Sending user_answer to API:', transcription);
-          const evaluation = await apiService.evaluateAnswer({
-            question: currentQuestion.prompt,
-            user_answer: transcription,
-            ideal_answer: currentQuestion.rubric_points.join('\n• '),
-          });
-
-          console.log('[Voice] Got evaluation, userAnswer state should be:', transcription);
-          setEvaluation(evaluation);
-          setQuestionScores(prev => [...prev, evaluation.score]);
-
-          // Automatically play the voice feedback
-          await playFeedbackAudioFromBase64(evaluation.audio_base64);
-
-        } catch (error) {
-          console.error('[Voice] Error:', error);
-          Alert.alert('Error', `Voice conversation failed: ${error}\n\nPlease try typing instead.`);
-        } finally {
-          setIsSubmitting(false);
-        }
-      }
-
-      setRecording(null);
-    } catch (error) {
-      console.error('Failed to stop recording:', error);
-      setIsSubmitting(false);
-    }
-  };
-
-  const playFeedbackAudioFromBase64 = async (audioBase64: string) => {
-    try {
-      setIsPlayingAudio(true);
-
-      // Set audio mode for playback
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
-
-      // Unload previous sound if exists
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
-      console.log('[Voice] Playing audio feedback...');
-
-      // Try using data URI directly (works on newer iOS versions)
-      const soundUri = `data:audio/mpeg;base64,${audioBase64}`;
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: soundUri },
-        { shouldPlay: false },
-        (status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setIsPlayingAudio(false);
-            console.log('[Voice] Audio playback finished');
-          }
-        }
-      );
-
-      setSound(newSound);
-      await newSound.setRateAsync(FEEDBACK_PLAYBACK_RATE, true);
-      await newSound.playAsync();
-      console.log('[Voice] Audio playback started');
-    } catch (error) {
-      console.error('[Voice] Audio playback error:', error);
-      setIsPlayingAudio(false);
-      // Don't show alert for audio errors, just log it
-    }
-  };
-
-  const handleSubmitAnswer = async () => {
-    if (!userAnswer.trim()) {
-      Alert.alert('Empty Answer', 'Please provide an answer before submitting.');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-
       const result = await apiService.evaluateAnswer({
         question: currentQuestion.prompt,
-        user_answer: userAnswer,
+        user_answer: answerText,
         ideal_answer: currentQuestion.rubric_points.join('\n• '),
       });
 
       setEvaluation(result);
       setQuestionScores(prev => [...prev, result.score]);
     } catch (error) {
-      Alert.alert('Error', 'Failed to evaluate your answer. Please try again.');
       console.error('Evaluation error:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const playFeedbackAudio = async () => {
-    if (!evaluation?.audio_base64) {
-      Alert.alert('No Audio', 'No audio feedback available.');
-      return;
-    }
+  // Demo flow: "recording" types out the pre-scripted example answer a few
+  // words at a time (where the live app streams mic audio to Whisper), then
+  // submits it for the canned evaluation.
+  const startListening = () => {
+    if (isRecording || isSubmitting || evaluation || !currentQuestion) return;
 
-    await playFeedbackAudioFromBase64(evaluation.audio_base64);
+    setIsRecording(true);
+    setUserAnswer('');
+
+    const answer = currentQuestion.demo_answer;
+    const words = answer.split(' ');
+    let index = 0;
+
+    typingTimerRef.current = setInterval(() => {
+      index += 3;
+      setUserAnswer(words.slice(0, index).join(' '));
+      if (index >= words.length) {
+        clearTypingTimer();
+        setIsRecording(false);
+        submitAnswer(answer);
+      }
+    }, 90);
+  };
+
+  const stopRecording = () => {
+    // "Skip ahead": complete the scripted answer and submit immediately
+    clearTypingTimer();
+    setIsRecording(false);
+    if (currentQuestion) {
+      setUserAnswer(currentQuestion.demo_answer);
+      submitAnswer(currentQuestion.demo_answer);
+    }
+  };
+
+  const playFeedbackAudio = () => {
+    if (!evaluation || !canSpeak) return;
+
+    stopSpeech();
+    const utterance = new (window as any).SpeechSynthesisUtterance(evaluation.feedback);
+    utterance.rate = 1.05;
+    utterance.onend = () => setIsPlayingAudio(false);
+    utterance.onerror = () => setIsPlayingAudio(false);
+    setIsPlayingAudio(true);
+    (window as any).speechSynthesis.speak(utterance);
   };
 
   const handleNextQuestion = () => {
+    stopSpeech();
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setUserAnswer('');
       setEvaluation(null);
-      if (sound) {
-        sound.unloadAsync();
-        setSound(null);
-      }
     } else {
-      Alert.alert(
-        'Practice Complete!',
-        'You\'ve completed all interview questions. Great job!',
-        [{ text: 'OK', onPress: onGoBack }]
-      );
+      // Interview complete (stats already recorded by the effect above)
+      onGoBack();
     }
   };
 
@@ -432,11 +266,9 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={async () => {
-              await stopPlayback();
-              if (isRecording) {
-                await stopRecording();
-              }
+            onPress={() => {
+              stopSpeech();
+              clearTypingTimer();
               onGoBack();
             }}
           >
@@ -465,25 +297,36 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
                 <Text style={styles.startPromptIcon}>🎤</Text>
                 <Text style={styles.startPromptTitle}>Voice Interview Mode</Text>
                 <Text style={styles.startPromptText}>
-                  Tap the button below to start recording your answer. You'll have up to 30 seconds to speak.
+                  In the live app you speak your answer and it's transcribed with
+                  Whisper, graded by Gemini, and read back with ElevenLabs.
+                  Microphones can't run in this web demo, so tap below to watch a
+                  pre-scripted example answer go through the same flow.
                 </Text>
                 <TouchableOpacity style={styles.startButton} onPress={startListening}>
-                  <Text style={styles.startButtonText}>🎙️ Start Recording</Text>
+                  <Text style={styles.startButtonText}>▶️ Play Example Answer</Text>
                 </TouchableOpacity>
+                <Text style={styles.demoNote}>
+                  Canned demo — not live AI
+                </Text>
               </View>
             )}
 
             {/* Voice Listening Indicator */}
             {isRecording && (
               <View style={styles.listeningBanner}>
-                <View style={styles.listeningPulse} />
-                <Text style={styles.listeningText}>🎤 Listening... Speak your answer</Text>
-                <TouchableOpacity
-                  style={styles.stopListeningButton}
-                  onPress={stopRecording}
-                >
-                  <Text style={styles.stopListeningText}>Stop & Submit</Text>
-                </TouchableOpacity>
+                <View style={styles.listeningHeader}>
+                  <View style={styles.listeningPulse} />
+                  <Text style={styles.listeningText}>🎤 Transcribing example answer…</Text>
+                  <TouchableOpacity
+                    style={styles.stopListeningButton}
+                    onPress={stopRecording}
+                  >
+                    <Text style={styles.stopListeningText}>Skip</Text>
+                  </TouchableOpacity>
+                </View>
+                {userAnswer ? (
+                  <Text style={styles.liveTranscript}>{userAnswer}</Text>
+                ) : null}
               </View>
             )}
 
@@ -491,7 +334,7 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
               <View style={styles.processingCard}>
                 <ActivityIndicator size="large" color="#007AFF" />
                 <Text style={styles.processingText}>
-                  Processing your answer...
+                  Grading the example answer...
                 </Text>
               </View>
             )}
@@ -507,14 +350,14 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
 
             {/* Show what was transcribed */}
             <View style={styles.transcriptionCard}>
-              <Text style={styles.transcriptionLabel}>📝 What You Said</Text>
+              <Text style={styles.transcriptionLabel}>📝 Example Answer (pre-scripted)</Text>
               <Text style={styles.transcriptionText}>
                 {userAnswer || '(No transcription available)'}
               </Text>
             </View>
 
             <View style={styles.feedbackCard}>
-              <Text style={styles.feedbackLabel}>AI Feedback</Text>
+              <Text style={styles.feedbackLabel}>AI Feedback (canned demo)</Text>
               <Text style={styles.feedbackText}>{evaluation.feedback}</Text>
             </View>
 
@@ -536,15 +379,17 @@ export const InterviewScreen: React.FC<InterviewScreenProps> = ({ onGoBack }) =>
               </View>
             )}
 
-            <TouchableOpacity
-              style={styles.audioButton}
-              onPress={playFeedbackAudio}
-              disabled={isPlayingAudio}
-            >
-              <Text style={styles.audioButtonText}>
-                {isPlayingAudio ? '🔊 Playing...' : '🔊 Listen to Feedback'}
-              </Text>
-            </TouchableOpacity>
+            {canSpeak && (
+              <TouchableOpacity
+                style={styles.audioButton}
+                onPress={playFeedbackAudio}
+                disabled={isPlayingAudio}
+              >
+                <Text style={styles.audioButtonText}>
+                  {isPlayingAudio ? '🔊 Playing...' : '🔊 Listen to Feedback (browser voice)'}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity style={styles.nextButton} onPress={handleNextQuestion}>
               <Text style={styles.nextButtonText}>
@@ -911,5 +756,23 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#ffffff',
+  },
+  listeningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveTranscript: {
+    marginTop: 14,
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#d1d1d6',
+    fontStyle: 'italic',
+  },
+  demoNote: {
+    marginTop: 12,
+    fontSize: 13,
+    color: '#8e8e93',
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });

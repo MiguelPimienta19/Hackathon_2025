@@ -25,11 +25,16 @@ interface QuizScreenProps {
   onGoBack: () => void;
 }
 
+// Accent colour and icon travel with the topic. Seven of these does not fit the
+// index-based ternary chain the first four used.
 const TOPICS = [
-  "Operating Systems & Concurrency",
-  "Programming Languages & Software Engineering",
-  "Memory, Pointers & Architecture",
-  "Data Structures & Algorithms"
+  { name: "Operating Systems & Concurrency", icon: 'cog', color: '#8E2DE2' },
+  { name: "Programming Languages & Software Engineering", icon: 'laptop', color: '#00D4FF' },
+  { name: "Memory, Pointers & Architecture", icon: 'brain', color: '#FF6B6B' },
+  { name: "Data Structures & Algorithms", icon: 'chart-bar', color: '#58CC02' },
+  { name: "Networking & HTTP", icon: 'lan-connect', color: '#FF9F0A' },
+  { name: "Databases & SQL", icon: 'database', color: '#5E5CE6' },
+  { name: "Security & Cryptography", icon: 'shield-lock', color: '#FFD60A' },
 ] as const;
 
 export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
@@ -182,44 +187,28 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({ onGoBack }) => {
             <Text style={styles.topicTitle}>Choose a Topic</Text>
             <Text style={styles.topicSubtitle}>Select one to start your quiz</Text>
 
-            <View style={styles.topicGrid}>
-              {TOPICS.map((topic, index) => {
-                const iconName =
-                  index === 0 ? 'cog' :
-                  index === 1 ? 'laptop' :
-                  index === 2 ? 'brain' :
-                  'chart-bar';
-
-                const borderColor =
-                  index === 0 ? '#8E2DE2' :
-                  index === 1 ? '#00D4FF' :
-                  index === 2 ? '#FF6B6B' :
-                  '#58CC02';
-
-                const iconColor =
-                  index === 0 ? '#8E2DE2' :
-                  index === 1 ? '#00D4FF' :
-                  index === 2 ? '#FF6B6B' :
-                  '#58CC02';
-
-                return (
-                  <TouchableOpacity
-                    key={topic}
-                    style={[styles.topicCard, { borderColor }]}
-                    onPress={() => handleTopicSelect(topic)}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons
-                      name={iconName}
-                      size={36}
-                      color={iconColor}
-                      style={styles.topicIcon}
-                    />
-                    <Text style={styles.topicText}>{topic}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <ScrollView
+              style={styles.topicScroll}
+              contentContainerStyle={styles.topicGrid}
+              showsVerticalScrollIndicator={false}
+            >
+              {TOPICS.map((topic) => (
+                <TouchableOpacity
+                  key={topic.name}
+                  style={[styles.topicCard, { borderColor: topic.color }]}
+                  onPress={() => handleTopicSelect(topic.name)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons
+                    name={topic.icon}
+                    size={28}
+                    color={topic.color}
+                    style={styles.topicIcon}
+                  />
+                  <Text style={styles.topicText}>{topic.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </SafeAreaView>
       </View>
@@ -837,27 +826,32 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     fontWeight: '600',
   },
+  topicScroll: {
+    flex: 1,
+  },
   topicGrid: {
-    gap: 20,
+    gap: 12,
+    paddingBottom: 20,
   },
   topicCard: {
+    flexDirection: 'row',
     backgroundColor: '#1c1c1e',
-    padding: 24,
-    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 120,
+    minHeight: 72,
   },
   topicIcon: {
-    marginBottom: 12,
+    marginRight: 14,
   },
   topicText: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
-    textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 21,
   },
 });
